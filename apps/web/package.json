@@ -17,15 +17,17 @@
     "@tanstack/react-query": "latest",
     "@tanstack/react-query-devtools": "latest",
     "@tanstack/react-router": "latest",
-    "jspdf": "^2.5.2",
-    "xlsx": "^0.18.5",
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/router-plugin": "latest",
     "@workspace/ui": "workspace:*",
+    "better-auth": "^1.6.22",
+    "jspdf": "^2.5.2",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "recharts": "^2.15.3",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tanstack/eslint-config": "latest",
@@ -34,6 +36,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
     "eslint": "^9",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^6",
     "vite": "catalog:",
     "vite-plus": "catalog:"

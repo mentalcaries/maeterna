@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Badge } from "@workspace/ui/components/badge"
@@ -19,105 +20,106 @@ import {
 import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 import { RiSearchLine, RiUserLine, RiBuilding2Line } from "@remixicon/react"
-import {
-  doctors,
-  doctorInstitutions,
-  addAccessGrant,
-  revokeAccessGrant,
-  getPatientAccessGrants,
-  getPatientAccessLogs,
-} from "@/mock/db"
-import type { Doctor, DoctorInstitution } from "@/mock/db"
-import { getSession } from "@/mock/auth"
+import { apiClient } from "@/lib/api-client"
+import type { components } from "@/lib/api.types"
 
 export const Route = createFileRoute("/patient/access")({
   component: PatientAccessPage,
 })
 
+type SearchDoctor = {
+  doctorId: string
+  doctorName: string
+  affiliations: components["schemas"]["DoctorAffiliation"][]
+}
+
+type SelectedAffiliation = components["schemas"]["DoctorAffiliation"] | null
+
 function PatientAccessPage() {
-  const session = getSession()
+  const queryClient = useQueryClient()
   const [query, setQuery] = useState("")
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
+  const [selectedDoctor, setSelectedDoctor] = useState<SearchDoctor | null>(
+    null
+  )
   const [selectedAffiliation, setSelectedAffiliation] =
-    useState<DoctorInstitution | null>(null)
+    useState<SelectedAffiliation>(null)
   const [grantType, setGrantType] = useState<"individual" | "department">(
     "individual"
   )
   const [grantDialogOpen, setGrantDialogOpen] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
 
-  if (!session) return null
-  const patientId = session.userId
+  const { data: grantsData = [] } = useQuery({
+    queryKey: ["grants"],
+    queryFn: async () => {
+      const res = await apiClient.GET("/patients/me/grants")
+      return res.data ?? []
+    },
+  })
 
-  const filteredDoctors =
-    query.trim().length < 1
-      ? []
-      : doctors.filter((d) => {
-          const q = query.toLowerCase()
-          if (d.name.toLowerCase().includes(q)) return true
-          return doctorInstitutions
-            .filter((di) => di.doctorId === d.id)
-            .some(
-              (di) =>
-                di.institutionName.toLowerCase().includes(q) ||
-                di.department.toLowerCase().includes(q)
-            )
-        })
+  const { data: accessLog = [] } = useQuery({
+    queryKey: ["access-log"],
+    queryFn: async () => {
+      const res = await apiClient.GET("/patients/me/access-log")
+      return res.data ?? []
+    },
+  })
 
-  const activeGrants = getPatientAccessGrants(patientId)
-  const accessLog = getPatientAccessLogs(patientId)
+  const { data: searchResults = [] } = useQuery({
+    queryKey: ["doctor-search", query],
+    queryFn: async () => {
+      const res = await apiClient.GET("/search/doctors", {
+        params: { query: { q: query } },
+      })
+      return res.data ?? []
+    },
+    enabled: query.trim().length >= 2,
+  })
 
-  function openGrantDialog(doctor: Doctor) {
-    const affiliations = doctorInstitutions.filter(
-      (di) => di.doctorId === doctor.id
-    )
+  const grantMutation = useMutation({
+    mutationFn: (body: {
+      grantType: "individual" | "department"
+      granteeId: string
+    }) => apiClient.POST("/patients/me/grants", { body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["grants"] })
+      setGrantDialogOpen(false)
+      setSelectedDoctor(null)
+      setQuery("")
+    },
+  })
+
+  const revokeMutation = useMutation({
+    mutationFn: (grantId: string) =>
+      apiClient.DELETE("/patients/me/grants/{grantId}", {
+        params: { path: { grantId } },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["grants"] })
+    },
+  })
+
+  function openGrantDialog(doctor: SearchDoctor) {
     setSelectedDoctor(doctor)
-    setSelectedAffiliation(affiliations[0] ?? null)
+    setSelectedAffiliation(doctor.affiliations[0] ?? null)
     setGrantType("individual")
     setGrantDialogOpen(true)
   }
 
   function handleGrant() {
     if (!selectedDoctor) return
-    if (grantType === "individual") {
-      addAccessGrant({
-        patientId,
-        grantType: "individual",
-        doctorId: selectedDoctor.id,
-        doctorName: selectedDoctor.name,
-        institutionId: selectedAffiliation?.institutionId,
-        institutionName: selectedAffiliation?.institutionName,
-        grantedAt: new Date().toISOString(),
-        revokedAt: null,
-      })
-    } else {
-      addAccessGrant({
-        patientId,
-        grantType: "department",
-        department: selectedAffiliation?.department,
-        institutionId: selectedAffiliation?.institutionId,
-        institutionName: selectedAffiliation?.institutionName,
-        grantedAt: new Date().toISOString(),
-        revokedAt: null,
-      })
-    }
-    setGrantDialogOpen(false)
-    setSelectedDoctor(null)
-    setQuery("")
-    setRefreshKey((k) => k + 1)
+    const granteeId =
+      grantType === "individual"
+        ? selectedDoctor.doctorId
+        : (selectedAffiliation?.institutionId ?? selectedDoctor.doctorId)
+
+    grantMutation.mutate({ grantType, granteeId })
   }
 
-  function handleRevoke(grantId: string) {
-    revokeAccessGrant(grantId)
-    setRefreshKey((k) => k + 1)
-  }
-
-  const selectedAffiliations = selectedDoctor
-    ? doctorInstitutions.filter((di) => di.doctorId === selectedDoctor.id)
-    : []
+  const selectedAffiliations = selectedDoctor?.affiliations ?? []
+  const filteredResults = query.trim().length >= 2 ? searchResults : []
 
   return (
-    <div key={refreshKey} className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col gap-1 pt-4">
         <h1 className="text-xl font-semibold">Manage Access</h1>
         <p className="text-sm text-muted-foreground">
@@ -138,31 +140,24 @@ function PatientAccessPage() {
           />
         </div>
 
-        {filteredDoctors.length > 0 && (
+        {filteredResults.length > 0 && (
           <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-            {filteredDoctors.map((doctor) => {
-              const affiliations = doctorInstitutions.filter(
-                (di) => di.doctorId === doctor.id
-              )
-              const primary = affiliations[0]
+            {filteredResults.map((doctor) => {
+              const primary = doctor.affiliations[0]
               return (
                 <button
-                  key={doctor.id}
+                  key={doctor.doctorId}
                   type="button"
                   onClick={() => openGrantDialog(doctor)}
                   className="flex items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="flex flex-col gap-0.5">
-                    <p className="text-sm font-medium">{doctor.name}</p>
+                    <p className="text-sm font-medium">{doctor.doctorName}</p>
                     {primary ? (
                       <p className="text-xs text-muted-foreground">
-                        {primary.department} · {primary.institutionName}
+                        {primary.departmentName} · {primary.institutionName}
                       </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {doctor.specialty}
-                      </p>
-                    )}
+                    ) : null}
                   </div>
                   <span className="mt-0.5 text-xs text-primary">Grant</span>
                 </button>
@@ -171,7 +166,7 @@ function PatientAccessPage() {
           </div>
         )}
 
-        {query.trim().length >= 1 && filteredDoctors.length === 0 && (
+        {query.trim().length >= 2 && filteredResults.length === 0 && (
           <p className="text-sm text-muted-foreground">No doctors found.</p>
         )}
       </div>
@@ -183,9 +178,9 @@ function PatientAccessPage() {
         <TabsList className="w-full">
           <TabsTrigger value="grants" className="flex-1">
             Active grants
-            {activeGrants.length > 0 && (
+            {grantsData.length > 0 && (
               <Badge variant="secondary" className="ml-1.5 text-xs">
-                {activeGrants.length}
+                {grantsData.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -195,14 +190,14 @@ function PatientAccessPage() {
         </TabsList>
 
         <TabsContent value="grants" className="mt-4">
-          {activeGrants.length === 0 ? (
+          {grantsData.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               No active grants. Use the search above to grant access to a
               doctor.
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-              {activeGrants.map((grant) => (
+              {grantsData.map((grant) => (
                 <div
                   key={grant.id}
                   className="flex items-start justify-between gap-3 p-3"
@@ -214,11 +209,7 @@ function PatientAccessPage() {
                       ) : (
                         <RiBuilding2Line className="size-3.5 text-muted-foreground" />
                       )}
-                      <p className="text-sm font-medium">
-                        {grant.grantType === "individual"
-                          ? grant.doctorName
-                          : `${grant.department ?? "Department"}`}
-                      </p>
+                      <p className="text-sm font-medium">{grant.granteeName}</p>
                       <Badge variant="secondary" className="text-xs">
                         {grant.grantType === "individual"
                           ? "Individual"
@@ -242,7 +233,8 @@ function PatientAccessPage() {
                   <Button
                     variant="outline"
                     size="xs"
-                    onClick={() => handleRevoke(grant.id)}
+                    disabled={revokeMutation.isPending}
+                    onClick={() => revokeMutation.mutate(grant.id)}
                   >
                     Revoke
                   </Button>
@@ -263,7 +255,7 @@ function PatientAccessPage() {
                 <div key={entry.id} className="flex flex-col gap-0.5 p-3">
                   <p className="text-sm font-medium">{entry.doctorName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {entry.institution}
+                    {entry.institutionName}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(entry.accessedAt).toLocaleDateString("en-TT", {
@@ -296,7 +288,7 @@ function PatientAccessPage() {
               <p className="text-sm text-muted-foreground">
                 Choose the scope of access for{" "}
                 <span className="font-medium text-foreground">
-                  {selectedDoctor.name}
+                  {selectedDoctor.doctorName}
                 </span>
                 .
               </p>
@@ -306,7 +298,7 @@ function PatientAccessPage() {
                   selected={grantType === "individual"}
                   onSelect={() => setGrantType("individual")}
                   icon={RiUserLine}
-                  label={selectedDoctor.name}
+                  label={selectedDoctor.doctorName}
                   sub="This doctor only"
                 />
 
@@ -314,23 +306,29 @@ function PatientAccessPage() {
                   <>
                     {selectedAffiliations.map((aff) => (
                       <GrantOption
-                        key={aff.id}
+                        key={aff.departmentId}
                         selected={
                           grantType === "department" &&
-                          selectedAffiliation?.id === aff.id
+                          selectedAffiliation?.departmentId === aff.departmentId
                         }
                         onSelect={() => {
                           setGrantType("department")
                           setSelectedAffiliation(aff)
                         }}
                         icon={RiBuilding2Line}
-                        label={`${aff.department} at ${aff.institutionName}`}
+                        label={`${aff.departmentName} at ${aff.institutionName}`}
                         sub="All doctors in this department"
                       />
                     ))}
                   </>
                 )}
               </div>
+
+              {grantMutation.isError && (
+                <p className="text-sm text-destructive">
+                  Failed to grant access. Please try again.
+                </p>
+              )}
             </div>
           )}
 
@@ -342,8 +340,12 @@ function PatientAccessPage() {
             >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleGrant}>
-              Grant access
+            <Button
+              size="sm"
+              onClick={handleGrant}
+              disabled={grantMutation.isPending}
+            >
+              {grantMutation.isPending ? "Granting…" : "Grant access"}
             </Button>
           </DialogFooter>
         </DialogContent>

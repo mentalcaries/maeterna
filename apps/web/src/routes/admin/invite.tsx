@@ -86,6 +86,7 @@ function AdminInvitePage() {
               <Select
                 value={role}
                 onValueChange={(v) => setRole(v as "patient" | "doctor")}
+                items={{ patient: "Patient", doctor: "Doctor" }}
               >
                 <SelectTrigger id="role">
                   <SelectValue />
@@ -122,7 +123,11 @@ function AdminInvitePage() {
             {role === "patient" && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="doctor">Assign to doctor</Label>
-                <Select value={doctorId} onValueChange={setDoctorId}>
+                <Select
+                  value={doctorId}
+                  onValueChange={setDoctorId}
+                  items={Object.fromEntries(doctors.map((d) => [d.id, d.name]))}
+                >
                   <SelectTrigger id="doctor">
                     <SelectValue />
                   </SelectTrigger>

@@ -6,8 +6,9 @@ import {
   useLocation,
 } from "@tanstack/react-router"
 import { useEffect } from "react"
-import { getSession, clearSession } from "@/mock/auth"
-import { doctors } from "@/mock/db"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSession } from "@/lib/session"
+import { authClient, getAppUser } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import {
   RiHeartPulseLine,
@@ -27,36 +28,40 @@ const EXCLUDED_PATHS = [
 function DoctorLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const session = getSession()
+  const queryClient = useQueryClient()
+  const { data: sessionData, isPending } = useSession()
 
   const isExcluded = EXCLUDED_PATHS.includes(location.pathname)
 
   useEffect(() => {
-    if (isExcluded) return
+    if (isExcluded || isPending) return
 
-    const s = getSession()
-    if (!s || s.role !== "doctor") {
-      void navigate({ to: "/doctor/login" })
+    const user = getAppUser(sessionData)
+    if (!user || user.role !== "doctor") {
+      void navigate({ to: "/" })
       return
     }
 
-    const doctor = doctors.find((d) => d.id === s.userId)
-    if (doctor?.pendingVerification && !doctor.mbttVerified) {
-      void navigate({ to: "/doctor/pending" })
+    if (!user.firstName) {
+      void navigate({ to: "/onboarding/doctor" })
       return
     }
-    if (!doctor?.onboardingComplete) {
-      void navigate({ to: "/doctor/onboarding" })
+
+    if (user.status === "pending_verification") {
+      void navigate({ to: "/onboarding/doctor/pending" })
     }
-  }, [navigate, isExcluded])
+  }, [sessionData, isPending, navigate, isExcluded])
 
   if (isExcluded) return <Outlet />
+  if (isPending) return null
 
-  if (!session || session.role !== "doctor") return null
+  const user = getAppUser(sessionData)
+  if (!user || user.role !== "doctor") return null
 
-  function handleLogout() {
-    clearSession()
-    void navigate({ to: "/doctor/login" })
+  async function handleLogout() {
+    await authClient.signOut()
+    void queryClient.invalidateQueries({ queryKey: ["session"] })
+    void navigate({ to: "/" })
   }
 
   return (
@@ -89,7 +94,7 @@ function DoctorLayout() {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={handleLogout}
+              onClick={() => void handleLogout()}
               aria-label="Sign out"
             >
               <RiLogoutBoxLine />
@@ -101,7 +106,7 @@ function DoctorLayout() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         <div className="mb-4 flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
-            Signed in as {session.name}
+            Signed in as {user.firstName} {user.lastName ?? ""}
           </span>
         </div>
         <Outlet />

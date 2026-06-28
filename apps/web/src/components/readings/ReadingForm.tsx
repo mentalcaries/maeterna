@@ -29,15 +29,24 @@ import {
   SelectItem,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { addReading } from "@/mock/db"
-import type { MealContext, ReadingContext, ReadingType } from "@/mock/db"
+import type { ReadingType } from "@/mock/db"
 
+type MealContext = "fasted" | "post_meal"
 type BPContext = "morning" | "evening" | "before_bed" | "at_clinic"
 type WhenOption = "now" | "custom"
 
+export type ReadingBody = {
+  type: "glucose" | "blood_pressure"
+  value1: number
+  value2?: number | null
+  context: string
+  notes?: string | null
+  timestamp: string
+}
+
 interface ReadingFormProps {
-  patientId: string
-  loggedById: string
+  onSubmit: (body: ReadingBody) => Promise<void> | void
+  isPending?: boolean
   onSuccess?: () => void
   onCancel?: () => void
 }
@@ -171,19 +180,9 @@ function formatDate(d: Date): string {
   })
 }
 
-function mealContextToReadingContext(m: MealContext): ReadingContext {
-  return m === "fasted" ? "fasting" : "post_meal"
-}
-
-function bpContextToReadingContext(b: BPContext): ReadingContext {
-  if (b === "morning") return "morning"
-  if (b === "at_clinic") return "morning"
-  return "before_bed"
-}
-
 export function ReadingForm({
-  patientId,
-  loggedById,
+  onSubmit,
+  isPending = false,
   onSuccess,
   onCancel,
 }: ReadingFormProps) {
@@ -198,7 +197,7 @@ export function ReadingForm({
   const [notes, setNotes] = useState("")
   const [error, setError] = useState("")
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
 
@@ -222,49 +221,50 @@ export function ReadingForm({
       timestamp = dt.toISOString()
     }
 
+    let body: ReadingBody
     if (type === "blood_pressure") {
       const v2 = parseFloat(value2)
       if (isNaN(v2) || v2 <= 0) {
         setError("Please enter a valid diastolic value.")
         return
       }
-      addReading({
-        patientId,
-        loggedById,
+      body = {
         type: "blood_pressure",
         value1: v1,
         value2: v2,
-        unit: "mmHg",
-        context: bpContextToReadingContext(bpContext),
-        timeOfDay: bpContext,
-        notes: notes.trim() || undefined,
+        context: bpContext,
+        notes: notes.trim() || null,
         timestamp,
-      })
+      }
     } else {
-      addReading({
-        patientId,
-        loggedById,
+      body = {
         type: "glucose",
         value1: v1,
-        unit: "mmol/L",
-        context: mealContextToReadingContext(mealContext),
-        mealContext,
-        notes: notes.trim() || undefined,
+        context: mealContext,
+        notes: notes.trim() || null,
         timestamp,
-      })
+      }
     }
 
-    setValue1("")
-    setValue2("")
-    setNotes("")
-    setWhen("now")
-    setCustomDate(undefined)
-    setCustomTime("06:00")
-    onSuccess?.()
+    try {
+      await onSubmit(body)
+      setValue1("")
+      setValue2("")
+      setNotes("")
+      setWhen("now")
+      setCustomDate(undefined)
+      setCustomTime("06:00")
+      onSuccess?.()
+    } catch {
+      setError("Failed to save reading. Please try again.")
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      className="flex flex-col gap-6"
+    >
       {/* Reading type */}
       <div className="flex flex-col gap-2">
         <Label>What are you measuring?</Label>
@@ -414,7 +414,13 @@ export function ReadingForm({
               </PopoverContent>
             </Popover>
 
-            <Select value={customTime} onValueChange={setCustomTime}>
+            <Select
+              value={customTime}
+              onValueChange={setCustomTime}
+              items={Object.fromEntries(
+                TIME_OPTIONS.map((t) => [t.value, t.label])
+              )}
+            >
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -445,8 +451,8 @@ export function ReadingForm({
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-3">
-        <Button type="submit" className="flex-1">
-          Log reading
+        <Button type="submit" className="flex-1" disabled={isPending}>
+          {isPending ? "Saving…" : "Log reading"}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>

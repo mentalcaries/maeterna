@@ -186,6 +186,9 @@ function AdminUsersPage() {
                               <Select
                                 value={newDoctorId}
                                 onValueChange={setNewDoctorId}
+                                items={Object.fromEntries(
+                                  doctors.map((d) => [d.id, d.name])
+                                )}
                               >
                                 <SelectTrigger id="new-doctor">
                                   <SelectValue />

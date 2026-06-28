@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
-import { getSession } from "@/mock/auth"
+import { apiClient } from "@/lib/api-client"
 import { ReadingForm } from "@/components/readings/ReadingForm"
+import type { ReadingBody } from "@/components/readings/ReadingForm"
 
 export const Route = createFileRoute("/patient/log")({
   component: PatientLogPage,
@@ -15,10 +17,16 @@ export const Route = createFileRoute("/patient/log")({
 
 function PatientLogPage() {
   const navigate = useNavigate()
-  const session = getSession()
+  const queryClient = useQueryClient()
   const [submitted, setSubmitted] = useState(false)
 
-  if (!session) return null
+  const logMutation = useMutation({
+    mutationFn: (body: ReadingBody) =>
+      apiClient.POST("/patients/me/readings", { body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["readings"] })
+    },
+  })
 
   if (submitted) {
     return (
@@ -60,8 +68,10 @@ function PatientLogPage() {
         </CardHeader>
         <CardContent>
           <ReadingForm
-            patientId={session.userId}
-            loggedById={session.userId}
+            onSubmit={async (body) => {
+              await logMutation.mutateAsync(body)
+            }}
+            isPending={logMutation.isPending}
             onSuccess={() => setSubmitted(true)}
           />
         </CardContent>

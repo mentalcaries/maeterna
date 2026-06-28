@@ -3,15 +3,16 @@ import { Button } from "@workspace/ui/components/button"
 import { RiHeartPulseLine, RiTimeLine } from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 
-export const Route = createFileRoute("/doctor/pending")({
-  component: DoctorPendingPage,
+export const Route = createFileRoute("/onboarding/doctor/pending")({
+  component: DoctorPendingOnboardingPage,
 })
 
-function DoctorPendingPage() {
+function DoctorPendingOnboardingPage() {
   const navigate = useNavigate()
 
-  function handleSignOut() {
-    void authClient.signOut().then(() => navigate({ to: "/" }))
+  async function handleSignOut() {
+    await authClient.signOut()
+    void navigate({ to: "/" })
   }
 
   return (
@@ -30,11 +31,11 @@ function DoctorPendingPage() {
           </div>
           <h1 className="text-xl font-semibold">Pending verification</h1>
           <p className="text-sm text-muted-foreground">
-            Your registration number was not found in the MBTT registry. Your
-            account has been submitted for manual review.
+            Your account is pending verification by the Maeterna team. You'll be
+            notified once approved.
           </p>
           <p className="text-sm text-muted-foreground">
-            You will be notified once approved.
+            In the meantime you cannot access patient data.
           </p>
         </div>
 
@@ -50,7 +51,11 @@ function DoctorPendingPage() {
           </ul>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={handleSignOut}>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => void handleSignOut()}
+        >
           Sign out
         </Button>
       </div>

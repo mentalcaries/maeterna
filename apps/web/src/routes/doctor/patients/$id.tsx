@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
 import { Button } from "@workspace/ui/components/button"
@@ -35,16 +36,11 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { Separator } from "@workspace/ui/components/separator"
-import {
-  patients,
-  doctors,
-  getPatientReadings,
-  addNote,
-  setPatientThresholds,
-} from "@/mock/db"
-import { getSession } from "@/mock/auth"
+import { apiClient } from "@/lib/api-client"
+import type { components } from "@/lib/api.types"
 import { ReadingBadge } from "@/components/readings/ReadingBadge"
 import { ReadingForm } from "@/components/readings/ReadingForm"
+import type { ReadingBody } from "@/components/readings/ReadingForm"
 import { GlucoseChart } from "@/components/charts/GlucoseChart"
 import { BPChart } from "@/components/charts/BPChart"
 import {
@@ -55,11 +51,58 @@ import {
   RiFilePdfLine,
 } from "@remixicon/react"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
+import type { Thresholds, AlertSeverity } from "@/lib/thresholds"
 import type { Reading } from "@/mock/db"
 
 export const Route = createFileRoute("/doctor/patients/$id")({
   component: PatientDetailPage,
 })
+
+type ApiReading = components["schemas"]["Reading"]
+type ApiThresholds = components["schemas"]["Thresholds"]
+
+function adaptReading(r: ApiReading): Reading {
+  return {
+    id: r.id,
+    patientId: r.patientId,
+    loggedById: r.loggedById,
+    type: r.type,
+    value1: r.value1,
+    value2: r.value2 ?? undefined,
+    unit: r.unit,
+    context: r.context as import("@/mock/db").ReadingContext,
+    notes: r.notes ?? undefined,
+    timestamp: r.timestamp,
+    severity:
+      r.severity === "normal" ? undefined : (r.severity as AlertSeverity),
+  }
+}
+
+function apiThresholdsToLocal(t: ApiThresholds): Thresholds {
+  return {
+    fasting_glucose_warning: t.fastingGlucoseWarning,
+    fasting_glucose_critical: t.fastingGlucoseCritical,
+    postmeal_glucose_warning: t.postMealGlucoseWarning,
+    postmeal_glucose_critical: t.postMealGlucoseCritical,
+    systolic_warning: t.systolicWarning,
+    systolic_critical: t.systolicCritical,
+    diastolic_warning: t.diastolicWarning,
+    diastolic_critical: t.diastolicCritical,
+  }
+}
+
+function localThresholdsToApi(t: Thresholds): ApiThresholds {
+  return {
+    fastingGlucoseWarning: t.fasting_glucose_warning,
+    fastingGlucoseCritical: t.fasting_glucose_critical,
+    postMealGlucoseWarning: t.postmeal_glucose_warning,
+    postMealGlucoseCritical: t.postmeal_glucose_critical,
+    systolicWarning: t.systolic_warning,
+    systolicCritical: t.systolic_critical,
+    diastolicWarning: t.diastolic_warning,
+    diastolicCritical: t.diastolic_critical,
+  }
+}
 
 const MEAL_LABELS: Record<string, string> = {
   fasted: "Fasted",
@@ -72,7 +115,7 @@ const TIME_LABELS: Record<string, string> = {
   before_bed: "Night",
   at_clinic: "At clinic",
 }
-const LEGACY_CONTEXT_LABELS: Record<string, string> = {
+const CONTEXT_LABELS: Record<string, string> = {
   fasting: "Fasting",
   post_meal: "After eating",
   morning: "Morning",
@@ -87,8 +130,7 @@ function readingContext(r: {
   const parts: string[] = []
   if (r.mealContext) parts.push(MEAL_LABELS[r.mealContext] ?? r.mealContext)
   if (r.timeOfDay) parts.push(TIME_LABELS[r.timeOfDay] ?? r.timeOfDay)
-  if (parts.length === 0)
-    parts.push(LEGACY_CONTEXT_LABELS[r.context] ?? r.context)
+  if (parts.length === 0) parts.push(CONTEXT_LABELS[r.context] ?? r.context)
   return parts.join(" · ")
 }
 
@@ -101,57 +143,105 @@ function toLocalTimeStr(d: Date): string {
 }
 
 function PatientDetailPage() {
-  const { id } = Route.useParams()
+  const { id: patientId } = Route.useParams()
   const navigate = useNavigate()
-  const session = getSession()
+  const queryClient = useQueryClient()
 
-  const patient = patients.find((p) => p.id === id)
-  const doctor = doctors.find((d) => d.id === session?.userId)
-
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [noteTarget, setNoteTarget] = useState<Reading | null>(null)
+  const [noteTarget, setNoteTarget] = useState<ApiReading | null>(null)
   const [noteText, setNoteText] = useState("")
   const [noteOpen, setNoteOpen] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [thresholdOpen, setThresholdOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
 
-  const [thresholdForm, setThresholdForm] = useState({
-    fasting_glucose_warning: String(
-      patient?.thresholds?.fasting_glucose_warning ??
-        DEFAULT_THRESHOLDS.fasting_glucose_warning
-    ),
-    fasting_glucose_critical: String(
-      patient?.thresholds?.fasting_glucose_critical ??
-        DEFAULT_THRESHOLDS.fasting_glucose_critical
-    ),
-    postmeal_glucose_warning: String(
-      patient?.thresholds?.postmeal_glucose_warning ??
-        DEFAULT_THRESHOLDS.postmeal_glucose_warning
-    ),
-    postmeal_glucose_critical: String(
-      patient?.thresholds?.postmeal_glucose_critical ??
-        DEFAULT_THRESHOLDS.postmeal_glucose_critical
-    ),
-    systolic_warning: String(
-      patient?.thresholds?.systolic_warning ??
-        DEFAULT_THRESHOLDS.systolic_warning
-    ),
-    systolic_critical: String(
-      patient?.thresholds?.systolic_critical ??
-        DEFAULT_THRESHOLDS.systolic_critical
-    ),
-    diastolic_warning: String(
-      patient?.thresholds?.diastolic_warning ??
-        DEFAULT_THRESHOLDS.diastolic_warning
-    ),
-    diastolic_critical: String(
-      patient?.thresholds?.diastolic_critical ??
-        DEFAULT_THRESHOLDS.diastolic_critical
-    ),
+  const { data: patientDetail, isPending } = useQuery({
+    queryKey: ["patient", patientId],
+    queryFn: async () => {
+      const res = await apiClient.GET("/doctors/me/patients/{patientId}", {
+        params: { path: { patientId } },
+      })
+      return res.data ?? null
+    },
   })
 
-  if (!patient || !doctor) {
+  const patient = patientDetail?.patient
+  const apiReadings = patientDetail?.readings ?? []
+  const apiThresholds = patientDetail?.thresholds ?? null
+  const localThresholds = apiThresholds
+    ? apiThresholdsToLocal(apiThresholds)
+    : DEFAULT_THRESHOLDS
+
+  const [thresholdForm, setThresholdForm] = useState<
+    Record<keyof Thresholds, string>
+  >(() => ({
+    fasting_glucose_warning: String(localThresholds.fasting_glucose_warning),
+    fasting_glucose_critical: String(localThresholds.fasting_glucose_critical),
+    postmeal_glucose_warning: String(localThresholds.postmeal_glucose_warning),
+    postmeal_glucose_critical: String(
+      localThresholds.postmeal_glucose_critical
+    ),
+    systolic_warning: String(localThresholds.systolic_warning),
+    systolic_critical: String(localThresholds.systolic_critical),
+    diastolic_warning: String(localThresholds.diastolic_warning),
+    diastolic_critical: String(localThresholds.diastolic_critical),
+  }))
+
+  const noteMutation = useMutation({
+    mutationFn: ({ readingId, notes }: { readingId: string; notes: string }) =>
+      apiClient.PATCH("/readings/{readingId}/notes", {
+        params: { path: { readingId } },
+        body: { notes },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
+      setNoteOpen(false)
+      setNoteTarget(null)
+      setNoteText("")
+    },
+  })
+
+  const logMutation = useMutation({
+    mutationFn: (body: ReadingBody) =>
+      apiClient.POST("/patients/{patientId}/readings", {
+        params: { path: { patientId } },
+        body,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
+      void queryClient.invalidateQueries({ queryKey: ["doctor-patients"] })
+      setLogOpen(false)
+    },
+  })
+
+  const thresholdMutation = useMutation({
+    mutationFn: (body: ApiThresholds) =>
+      apiClient.PUT("/doctors/me/patients/{patientId}/thresholds", {
+        params: { path: { patientId } },
+        body,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
+      setThresholdOpen(false)
+    },
+  })
+
+  if (isPending) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void navigate({ to: "/doctor/dashboard" })}
+        >
+          <RiArrowLeftLine className="mr-1 size-3.5" />
+          Back
+        </Button>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    )
+  }
+
+  if (!patient) {
     return (
       <div className="flex flex-col gap-4">
         <Button
@@ -167,21 +257,17 @@ function PatientDetailPage() {
     )
   }
 
-  const allReadings = getPatientReadings(id)
+  const allReadings = apiReadings.map(adaptReading)
   const alerts = allReadings.filter((r) => r.severity !== undefined)
-  const patientName = patient.name
+  const patientName = `${patient.firstName} ${patient.lastName}`
 
   function handleSaveNote() {
     if (!noteTarget || !noteText.trim()) return
-    addNote(noteTarget.id, noteText.trim())
-    setNoteOpen(false)
-    setNoteTarget(null)
-    setNoteText("")
-    setRefreshKey((k) => k + 1)
+    noteMutation.mutate({ readingId: noteTarget.id, notes: noteText.trim() })
   }
 
   function handleSaveThresholds() {
-    setPatientThresholds(id, {
+    const parsed: Thresholds = {
       fasting_glucose_warning: parseFloat(
         thresholdForm.fasting_glucose_warning
       ),
@@ -198,9 +284,8 @@ function PatientDetailPage() {
       systolic_critical: parseFloat(thresholdForm.systolic_critical),
       diastolic_warning: parseFloat(thresholdForm.diastolic_warning),
       diastolic_critical: parseFloat(thresholdForm.diastolic_critical),
-    })
-    setThresholdOpen(false)
-    setRefreshKey((k) => k + 1)
+    }
+    thresholdMutation.mutate(localThresholdsToApi(parsed))
   }
 
   function handleExportExcel() {
@@ -376,7 +461,7 @@ function PatientDetailPage() {
 
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">{patient.name}</h1>
+          <h1 className="text-2xl font-semibold">{patientName}</h1>
           {patient.status === "suspended" && (
             <Badge variant="destructive">Suspended</Badge>
           )}
@@ -409,27 +494,47 @@ function PatientDetailPage() {
           <Button
             variant="outline"
             size="xs"
-            onClick={() => setThresholdOpen(true)}
+            onClick={() => {
+              setThresholdForm({
+                fasting_glucose_warning: String(
+                  localThresholds.fasting_glucose_warning
+                ),
+                fasting_glucose_critical: String(
+                  localThresholds.fasting_glucose_critical
+                ),
+                postmeal_glucose_warning: String(
+                  localThresholds.postmeal_glucose_warning
+                ),
+                postmeal_glucose_critical: String(
+                  localThresholds.postmeal_glucose_critical
+                ),
+                systolic_warning: String(localThresholds.systolic_warning),
+                systolic_critical: String(localThresholds.systolic_critical),
+                diastolic_warning: String(localThresholds.diastolic_warning),
+                diastolic_critical: String(localThresholds.diastolic_critical),
+              })
+              setThresholdOpen(true)
+            }}
           >
             Set thresholds
           </Button>
         </div>
 
         <TabsContent value="glucose">
-          <Card key={`glucose-${refreshKey}`}>
+          <Card>
             <CardHeader>
               <CardTitle className="text-sm">Glucose over time</CardTitle>
             </CardHeader>
             <CardContent>
               <GlucoseChart
                 readings={allReadings}
-                thresholdOverrides={patient.thresholds}
+                thresholdOverrides={localThresholds}
               />
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="bp">
-          <Card key={`bp-${refreshKey}`}>
+          <Card>
             <CardHeader>
               <CardTitle className="text-sm">
                 Blood pressure over time
@@ -438,7 +543,7 @@ function PatientDetailPage() {
             <CardContent>
               <BPChart
                 readings={allReadings}
-                thresholdOverrides={patient.thresholds}
+                thresholdOverrides={localThresholds}
               />
             </CardContent>
           </Card>
@@ -470,13 +575,17 @@ function PatientDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allReadings.map((r) => {
+              {apiReadings.map((r) => {
                 const d = new Date(r.timestamp)
                 const valueStr =
                   r.type === "blood_pressure"
                     ? `${r.value1}/${r.value2 ?? "?"}`
                     : `${r.value1}`
                 const unitStr = r.type === "blood_pressure" ? "mmHg" : "mmol/L"
+                const severity =
+                  r.severity === "normal"
+                    ? undefined
+                    : (r.severity as AlertSeverity)
 
                 return (
                   <TableRow key={r.id}>
@@ -500,7 +609,7 @@ function PatientDetailPage() {
                       {readingContext(r)}
                     </TableCell>
                     <TableCell>
-                      <ReadingBadge severity={r.severity} />
+                      <ReadingBadge severity={severity} />
                     </TableCell>
                     <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
                       {r.notes ?? "—"}
@@ -530,15 +639,14 @@ function PatientDetailPage() {
       <Dialog open={logOpen} onOpenChange={setLogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Log reading for {patient.name}</DialogTitle>
+            <DialogTitle>Log reading for {patientName}</DialogTitle>
           </DialogHeader>
           <ReadingForm
-            patientId={id}
-            loggedById={doctor.id}
-            onSuccess={() => {
-              setLogOpen(false)
-              setRefreshKey((k) => k + 1)
+            onSubmit={async (body) => {
+              await logMutation.mutateAsync(body)
             }}
+            isPending={logMutation.isPending}
+            onSuccess={() => setLogOpen(false)}
             onCancel={() => setLogOpen(false)}
           />
         </DialogContent>
@@ -548,7 +656,7 @@ function PatientDetailPage() {
       <Dialog open={thresholdOpen} onOpenChange={setThresholdOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Alert thresholds — {patient.name}</DialogTitle>
+            <DialogTitle>Alert thresholds — {patientName}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {(
@@ -580,6 +688,11 @@ function PatientDetailPage() {
               </div>
             ))}
           </div>
+          {thresholdMutation.isError && (
+            <p className="mt-2 text-sm text-destructive">
+              Failed to save thresholds. Please try again.
+            </p>
+          )}
           <DialogFooter className="mt-4">
             <Button
               variant="outline"
@@ -588,8 +701,12 @@ function PatientDetailPage() {
             >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSaveThresholds}>
-              Save thresholds
+            <Button
+              size="sm"
+              onClick={handleSaveThresholds}
+              disabled={thresholdMutation.isPending}
+            >
+              {thresholdMutation.isPending ? "Saving…" : "Save thresholds"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -613,6 +730,11 @@ function PatientDetailPage() {
               onChange={(e) => setNoteText(e.target.value)}
             />
           </div>
+          {noteMutation.isError && (
+            <p className="text-sm text-destructive">
+              Failed to save note. Please try again.
+            </p>
+          )}
           <DialogFooter className="mt-4">
             <Button
               variant="outline"
@@ -621,8 +743,12 @@ function PatientDetailPage() {
             >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSaveNote}>
-              Save note
+            <Button
+              size="sm"
+              onClick={handleSaveNote}
+              disabled={noteMutation.isPending}
+            >
+              {noteMutation.isPending ? "Saving…" : "Save note"}
             </Button>
           </DialogFooter>
         </DialogContent>

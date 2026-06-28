@@ -6,8 +6,10 @@ import {
   useLocation,
 } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import { getSession, clearSession } from "@/mock/auth"
-import { deletePatientAccount } from "@/mock/db"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useSession } from "@/lib/session"
+import { authClient, getAppUser } from "@/lib/auth-client"
+import { apiClient } from "@/lib/api-client"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
@@ -31,7 +33,8 @@ export const Route = createFileRoute("/patient")({ component: PatientLayout })
 function PatientLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const session = getSession()
+  const queryClient = useQueryClient()
+  const { data: sessionData, isPending } = useSession()
 
   const isLoginPage = location.pathname === "/patient/login"
 
@@ -39,30 +42,38 @@ function PatientLayout() {
   const [deleteMode, setDeleteMode] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState("")
 
+  const deleteMutation = useMutation({
+    mutationFn: () => apiClient.DELETE("/patients/me"),
+    onSuccess: async () => {
+      await authClient.signOut()
+      void queryClient.invalidateQueries({ queryKey: ["session"] })
+      void navigate({ to: "/login" })
+    },
+  })
+
   useEffect(() => {
-    if (!isLoginPage) {
-      const s = getSession()
-      if (!s || s.role !== "patient") {
-        void navigate({ to: "/patient/login" })
-      }
+    if (isPending || isLoginPage) return
+    const user = getAppUser(sessionData)
+    if (!user || user.role !== "patient") {
+      void navigate({ to: "/" })
     }
-  }, [navigate, isLoginPage])
+  }, [sessionData, isPending, navigate, isLoginPage])
 
   if (isLoginPage) return <Outlet />
+  if (isPending) return null
 
-  if (!session || session.role !== "patient") return null
+  const user = getAppUser(sessionData)
+  if (!user || user.role !== "patient") return null
 
-  function handleLogout() {
-    clearSession()
-    void navigate({ to: "/patient/login" })
+  async function handleLogout() {
+    await authClient.signOut()
+    void queryClient.invalidateQueries({ queryKey: ["session"] })
+    void navigate({ to: "/" })
   }
 
   function handleDeleteAccount() {
     if (deleteConfirm !== "DELETE") return
-    deletePatientAccount(session!.userId)
-    clearSession()
-    setSettingsOpen(false)
-    void navigate({ to: "/patient/login" })
+    deleteMutation.mutate()
   }
 
   function handleSettingsClose(open: boolean) {
@@ -84,6 +95,8 @@ function PatientLayout() {
     { to: "/patient/access" as const, icon: RiShieldLine, label: "Access" },
   ]
 
+  const displayName = user.firstName ?? user.name.split(" ")[0] ?? user.name
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -95,9 +108,7 @@ function PatientLayout() {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground">
-              {session.name}
-            </span>
+            <span className="text-xs text-muted-foreground">{displayName}</span>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -109,7 +120,7 @@ function PatientLayout() {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={handleLogout}
+              onClick={() => void handleLogout()}
               aria-label="Sign out"
             >
               <RiLogoutBoxLine />
@@ -191,14 +202,23 @@ function PatientLayout() {
                     placeholder="DELETE"
                     autoComplete="off"
                   />
+                  {deleteMutation.isError && (
+                    <p className="text-xs text-destructive">
+                      Failed to delete account. Please try again.
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       variant="destructive"
                       size="sm"
-                      disabled={deleteConfirm !== "DELETE"}
+                      disabled={
+                        deleteConfirm !== "DELETE" || deleteMutation.isPending
+                      }
                       onClick={handleDeleteAccount}
                     >
-                      Confirm deletion
+                      {deleteMutation.isPending
+                        ? "Deleting…"
+                        : "Confirm deletion"}
                     </Button>
                     <Button
                       variant="outline"
