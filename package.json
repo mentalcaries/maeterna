@@ -7,13 +7,13 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "prepare": "vp config"
   },
   "devDependencies": {
-    "prettier": "^3.8.3",
-    "prettier-plugin-tailwindcss": "^0.8.0",
     "turbo": "^2.9.18",
-    "typescript": "^6"
+    "typescript": "^6",
+    "vite-plus": "catalog:"
   },
   "packageManager": "pnpm@10.33.4",
   "engines": {

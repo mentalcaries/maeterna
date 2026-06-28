@@ -1,47 +1,23 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
-
-import appCss from "@workspace/ui/globals.css?url"
+import { createRootRoute, Outlet } from "@tanstack/react-router"
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      {
-        charSet: "utf-8",
-      },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      {
-        title: "TanStack Start Starter",
-      },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">
-      <h1>404</h1>
-      <p>The requested page could not be found.</p>
+      <h1 className="text-2xl font-semibold">404</h1>
+      <p className="text-muted-foreground">Page not found.</p>
     </main>
   ),
-  shellComponent: RootDocument,
+  component: RootComponent,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootComponent() {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
+    <>
+      <Outlet />
+      <TanStackRouterDevtools position="bottom-right" />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </>
   )
 }
