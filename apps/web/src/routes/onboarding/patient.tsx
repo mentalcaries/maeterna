@@ -124,19 +124,21 @@ function PatientOnboardingPage() {
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle>Doctor invite</CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base">
               {inviteData.doctorName} has invited you to share your health data.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-sm font-medium">{inviteData.doctorName}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-base font-medium">{inviteData.doctorName}</p>
+              <p className="text-sm text-muted-foreground">
                 {inviteData.departmentName} · {inviteData.institutionName}
               </p>
             </div>
 
-            <p className="text-sm font-medium">Do you want to grant access?</p>
+            <p className="text-base font-medium">
+              Do you want to grant access?
+            </p>
 
             <div className="flex flex-col gap-2">
               <GrantOption
@@ -191,7 +193,7 @@ function PatientOnboardingPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Your details</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base">
             We need a few details to set up your health record.
           </CardDescription>
         </CardHeader>
@@ -206,6 +208,7 @@ function PatientOnboardingPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   autoComplete="given-name"
+                  className="text-base"
                 />
               </div>
               <div className="flex flex-1 flex-col gap-1.5">
@@ -216,6 +219,7 @@ function PatientOnboardingPage() {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   autoComplete="family-name"
+                  className="text-base"
                 />
               </div>
             </div>
@@ -225,7 +229,7 @@ function PatientOnboardingPage() {
               <Popover>
                 <PopoverTrigger
                   type="button"
-                  className="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-normal hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-base font-normal hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <RiCalendarLine className="size-4 shrink-0 text-muted-foreground" />
                   {dob ? (
@@ -305,13 +309,13 @@ function GrantOption({
       <div>
         <p
           className={cn(
-            "text-sm font-medium",
+            "text-base font-medium",
             selected ? "text-primary" : "text-foreground"
           )}
         >
           {label}
         </p>
-        <p className="text-xs text-muted-foreground">{sub}</p>
+        <p className="text-sm text-muted-foreground">{sub}</p>
       </div>
     </button>
   )

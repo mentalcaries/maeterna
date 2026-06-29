@@ -27,7 +27,6 @@ import { Route as PatientDashboardRouteImport } from './routes/patient/dashboard
 import { Route as PatientAccessRouteImport } from './routes/patient/access'
 import { Route as OnboardingPatientRouteImport } from './routes/onboarding/patient'
 import { Route as DoctorPendingRouteImport } from './routes/doctor/pending'
-import { Route as DoctorOnboardingRouteImport } from './routes/doctor/onboarding'
 import { Route as DoctorLoginRouteImport } from './routes/doctor/login'
 import { Route as DoctorDashboardRouteImport } from './routes/doctor/dashboard'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -40,11 +39,8 @@ import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminAuditLogRouteImport } from './routes/admin/audit-log'
 import { Route as AdminAuditRouteImport } from './routes/admin/audit'
 import { Route as SignupDoctorIndexRouteImport } from './routes/signup/doctor/index'
-import { Route as OnboardingDoctorIndexRouteImport } from './routes/onboarding/doctor/index'
 import { Route as SignupDoctorPendingRouteImport } from './routes/signup/doctor/pending'
 import { Route as SignupDoctorAffiliationsRouteImport } from './routes/signup/doctor/affiliations'
-import { Route as OnboardingDoctorPendingRouteImport } from './routes/onboarding/doctor/pending'
-import { Route as OnboardingDoctorAffiliationsRouteImport } from './routes/onboarding/doctor/affiliations'
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor/patients/$id'
 
 const SignupRoute = SignupRouteImport.update({
@@ -137,11 +133,6 @@ const DoctorPendingRoute = DoctorPendingRouteImport.update({
   path: '/pending',
   getParentRoute: () => DoctorRouteRoute,
 } as any)
-const DoctorOnboardingRoute = DoctorOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => DoctorRouteRoute,
-} as any)
 const DoctorLoginRoute = DoctorLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -202,11 +193,6 @@ const SignupDoctorIndexRoute = SignupDoctorIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SignupDoctorRoute,
 } as any)
-const OnboardingDoctorIndexRoute = OnboardingDoctorIndexRouteImport.update({
-  id: '/onboarding/doctor/',
-  path: '/onboarding/doctor/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupDoctorPendingRoute = SignupDoctorPendingRouteImport.update({
   id: '/pending',
   path: '/pending',
@@ -217,17 +203,6 @@ const SignupDoctorAffiliationsRoute =
     id: '/affiliations',
     path: '/affiliations',
     getParentRoute: () => SignupDoctorRoute,
-  } as any)
-const OnboardingDoctorPendingRoute = OnboardingDoctorPendingRouteImport.update({
-  id: '/onboarding/doctor/pending',
-  path: '/onboarding/doctor/pending',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingDoctorAffiliationsRoute =
-  OnboardingDoctorAffiliationsRouteImport.update({
-    id: '/onboarding/doctor/affiliations',
-    path: '/onboarding/doctor/affiliations',
-    getParentRoute: () => rootRouteImport,
   } as any)
 const DoctorPatientsIdRoute = DoctorPatientsIdRouteImport.update({
   id: '/patients/$id',
@@ -254,7 +229,6 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
-  '/doctor/onboarding': typeof DoctorOnboardingRoute
   '/doctor/pending': typeof DoctorPendingRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
@@ -267,11 +241,8 @@ export interface FileRoutesByFullPath {
   '/signup/patient': typeof SignupPatientRoute
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
-  '/onboarding/doctor/affiliations': typeof OnboardingDoctorAffiliationsRoute
-  '/onboarding/doctor/pending': typeof OnboardingDoctorPendingRoute
   '/signup/doctor/affiliations': typeof SignupDoctorAffiliationsRoute
   '/signup/doctor/pending': typeof SignupDoctorPendingRoute
-  '/onboarding/doctor/': typeof OnboardingDoctorIndexRoute
   '/signup/doctor/': typeof SignupDoctorIndexRoute
 }
 export interface FileRoutesByTo {
@@ -293,7 +264,6 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
-  '/doctor/onboarding': typeof DoctorOnboardingRoute
   '/doctor/pending': typeof DoctorPendingRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
@@ -305,11 +275,8 @@ export interface FileRoutesByTo {
   '/signup/patient': typeof SignupPatientRoute
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
-  '/onboarding/doctor/affiliations': typeof OnboardingDoctorAffiliationsRoute
-  '/onboarding/doctor/pending': typeof OnboardingDoctorPendingRoute
   '/signup/doctor/affiliations': typeof SignupDoctorAffiliationsRoute
   '/signup/doctor/pending': typeof SignupDoctorPendingRoute
-  '/onboarding/doctor': typeof OnboardingDoctorIndexRoute
   '/signup/doctor': typeof SignupDoctorIndexRoute
 }
 export interface FileRoutesById {
@@ -332,7 +299,6 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
-  '/doctor/onboarding': typeof DoctorOnboardingRoute
   '/doctor/pending': typeof DoctorPendingRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
@@ -345,11 +311,8 @@ export interface FileRoutesById {
   '/signup/patient': typeof SignupPatientRoute
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
-  '/onboarding/doctor/affiliations': typeof OnboardingDoctorAffiliationsRoute
-  '/onboarding/doctor/pending': typeof OnboardingDoctorPendingRoute
   '/signup/doctor/affiliations': typeof SignupDoctorAffiliationsRoute
   '/signup/doctor/pending': typeof SignupDoctorPendingRoute
-  '/onboarding/doctor/': typeof OnboardingDoctorIndexRoute
   '/signup/doctor/': typeof SignupDoctorIndexRoute
 }
 export interface FileRouteTypes {
@@ -373,7 +336,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/doctor/dashboard'
     | '/doctor/login'
-    | '/doctor/onboarding'
     | '/doctor/pending'
     | '/onboarding/patient'
     | '/patient/access'
@@ -386,11 +348,8 @@ export interface FileRouteTypes {
     | '/signup/patient'
     | '/signup/select-role'
     | '/doctor/patients/$id'
-    | '/onboarding/doctor/affiliations'
-    | '/onboarding/doctor/pending'
     | '/signup/doctor/affiliations'
     | '/signup/doctor/pending'
-    | '/onboarding/doctor/'
     | '/signup/doctor/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -412,7 +371,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/doctor/dashboard'
     | '/doctor/login'
-    | '/doctor/onboarding'
     | '/doctor/pending'
     | '/onboarding/patient'
     | '/patient/access'
@@ -424,11 +382,8 @@ export interface FileRouteTypes {
     | '/signup/patient'
     | '/signup/select-role'
     | '/doctor/patients/$id'
-    | '/onboarding/doctor/affiliations'
-    | '/onboarding/doctor/pending'
     | '/signup/doctor/affiliations'
     | '/signup/doctor/pending'
-    | '/onboarding/doctor'
     | '/signup/doctor'
   id:
     | '__root__'
@@ -450,7 +405,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/doctor/dashboard'
     | '/doctor/login'
-    | '/doctor/onboarding'
     | '/doctor/pending'
     | '/onboarding/patient'
     | '/patient/access'
@@ -463,11 +417,8 @@ export interface FileRouteTypes {
     | '/signup/patient'
     | '/signup/select-role'
     | '/doctor/patients/$id'
-    | '/onboarding/doctor/affiliations'
-    | '/onboarding/doctor/pending'
     | '/signup/doctor/affiliations'
     | '/signup/doctor/pending'
-    | '/onboarding/doctor/'
     | '/signup/doctor/'
   fileRoutesById: FileRoutesById
 }
@@ -480,9 +431,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRouteWithChildren
   OnboardingPatientRoute: typeof OnboardingPatientRoute
-  OnboardingDoctorAffiliationsRoute: typeof OnboardingDoctorAffiliationsRoute
-  OnboardingDoctorPendingRoute: typeof OnboardingDoctorPendingRoute
-  OnboardingDoctorIndexRoute: typeof OnboardingDoctorIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -613,13 +561,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorPendingRouteImport
       parentRoute: typeof DoctorRouteRoute
     }
-    '/doctor/onboarding': {
-      id: '/doctor/onboarding'
-      path: '/onboarding'
-      fullPath: '/doctor/onboarding'
-      preLoaderRoute: typeof DoctorOnboardingRouteImport
-      parentRoute: typeof DoctorRouteRoute
-    }
     '/doctor/login': {
       id: '/doctor/login'
       path: '/login'
@@ -704,13 +645,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupDoctorIndexRouteImport
       parentRoute: typeof SignupDoctorRoute
     }
-    '/onboarding/doctor/': {
-      id: '/onboarding/doctor/'
-      path: '/onboarding/doctor'
-      fullPath: '/onboarding/doctor/'
-      preLoaderRoute: typeof OnboardingDoctorIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup/doctor/pending': {
       id: '/signup/doctor/pending'
       path: '/pending'
@@ -724,20 +658,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup/doctor/affiliations'
       preLoaderRoute: typeof SignupDoctorAffiliationsRouteImport
       parentRoute: typeof SignupDoctorRoute
-    }
-    '/onboarding/doctor/pending': {
-      id: '/onboarding/doctor/pending'
-      path: '/onboarding/doctor/pending'
-      fullPath: '/onboarding/doctor/pending'
-      preLoaderRoute: typeof OnboardingDoctorPendingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding/doctor/affiliations': {
-      id: '/onboarding/doctor/affiliations'
-      path: '/onboarding/doctor/affiliations'
-      fullPath: '/onboarding/doctor/affiliations'
-      preLoaderRoute: typeof OnboardingDoctorAffiliationsRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/doctor/patients/$id': {
       id: '/doctor/patients/$id'
@@ -778,7 +698,6 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 interface DoctorRouteRouteChildren {
   DoctorDashboardRoute: typeof DoctorDashboardRoute
   DoctorLoginRoute: typeof DoctorLoginRoute
-  DoctorOnboardingRoute: typeof DoctorOnboardingRoute
   DoctorPendingRoute: typeof DoctorPendingRoute
   DoctorPatientsIdRoute: typeof DoctorPatientsIdRoute
 }
@@ -786,7 +705,6 @@ interface DoctorRouteRouteChildren {
 const DoctorRouteRouteChildren: DoctorRouteRouteChildren = {
   DoctorDashboardRoute: DoctorDashboardRoute,
   DoctorLoginRoute: DoctorLoginRoute,
-  DoctorOnboardingRoute: DoctorOnboardingRoute,
   DoctorPendingRoute: DoctorPendingRoute,
   DoctorPatientsIdRoute: DoctorPatientsIdRoute,
 }
@@ -867,9 +785,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRouteWithChildren,
   OnboardingPatientRoute: OnboardingPatientRoute,
-  OnboardingDoctorAffiliationsRoute: OnboardingDoctorAffiliationsRoute,
-  OnboardingDoctorPendingRoute: OnboardingDoctorPendingRoute,
-  OnboardingDoctorIndexRoute: OnboardingDoctorIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

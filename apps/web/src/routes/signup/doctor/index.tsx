@@ -11,6 +11,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/dialog"
 import { authClient, getAppUser } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
 
@@ -42,6 +49,8 @@ function DoctorProfilePage() {
   const [lastName, setLastName] = useState("")
   const [registrationNumber, setRegistrationNumber] = useState("")
   const [profileError, setProfileError] = useState("")
+  const [verificationFailed, setVerificationFailed] = useState(false)
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
 
   const profileMutation = useMutation({
     mutationFn: (body: {
@@ -50,10 +59,14 @@ function DoctorProfilePage() {
       registrationNumber: string
     }) => apiClient.POST("/profile/complete", { body }),
     onSuccess: (res) => {
+      const data = res.data
+      if (!data) return
+      if ("verificationFailed" in data && data.verificationFailed) {
+        setVerificationFailed(true)
+        return
+      }
       void queryClient.invalidateQueries({ queryKey: ["session"] })
-      const profile = res.data
-      if (!profile) return
-      if ("status" in profile && profile.status === "pending_verification") {
+      if ("status" in data && data.status === "pending_verification") {
         void navigate({ to: "/signup/doctor/pending" })
       } else {
         void navigate({ to: "/signup/doctor/affiliations" })
@@ -61,9 +74,22 @@ function DoctorProfilePage() {
     },
   })
 
+  const submitForReviewMutation = useMutation({
+    mutationFn: (body: {
+      firstName: string
+      lastName: string
+      registrationNumber: string
+    }) => apiClient.POST("/profile/complete/submit-for-review", { body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["session"] })
+      void navigate({ to: "/signup/doctor/pending" })
+    },
+  })
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setProfileError("")
+    setVerificationFailed(false)
     if (!firstName.trim()) {
       setProfileError("First name is required.")
       return
@@ -166,6 +192,23 @@ function DoctorProfilePage() {
               </p>
             )}
 
+            {verificationFailed && (
+              <div className="flex flex-col gap-2">
+                <p className="my-3 text-sm text-destructive">
+                  We couldn't verify your details against the MBTT registry.
+                  Please check your Member ID and try again.
+                </p>
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="mx-auto self-start text-sm text-muted-foreground hover:text-foreground"
+                  onClick={() => setReviewDialogOpen(true)}
+                >
+                  request manual approval.
+                </Button>
+              </div>
+            )}
+
             <Button
               type="submit"
               className="w-full"
@@ -176,6 +219,40 @@ function DoctorProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submit for manual review?</DialogTitle>
+          </DialogHeader>
+          <p className="text-base text-muted-foreground">
+            Your account will be reviewed by the Maeterna team. This typically
+            takes 1–3 business days. You won't be able to access the platform
+            until approved.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReviewDialogOpen(false)}
+              disabled={submitForReviewMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                submitForReviewMutation.mutate({
+                  firstName: firstName.trim(),
+                  lastName: lastName.trim(),
+                  registrationNumber: registrationNumber.trim(),
+                })
+              }}
+              disabled={submitForReviewMutation.isPending}
+            >
+              {submitForReviewMutation.isPending ? "Submitting…" : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

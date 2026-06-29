@@ -73,6 +73,12 @@ export const DoctorSchema = z
   })
   .openapi("Doctor")
 
+export const DoctorVerificationFailedSchema = z
+  .object({
+    verificationFailed: z.literal(true),
+  })
+  .openapi("DoctorVerificationFailed")
+
 export const DepartmentSchema = z
   .object({
     id: z.string().uuid(),

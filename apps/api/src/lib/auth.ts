@@ -38,6 +38,8 @@ export function getAuth(env: CloudflareBindings) {
     },
     plugins: [
       magicLink({
+        expiresIn: 600,
+        allowedAttempts: 3,
         sendMagicLink: async ({ email, url }) => {
           const resend = new Resend(env.RESEND_API_KEY)
           const { subject, html, text } = magicLinkEmail(url, env.FRONTEND_URL)

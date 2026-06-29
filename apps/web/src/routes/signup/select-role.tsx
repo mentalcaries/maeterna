@@ -93,7 +93,7 @@ function SelectRolePage() {
           />
 
           {roleMutation.isError && (
-            <p className="text-center text-sm text-destructive">
+            <p className="text-center text-base text-destructive">
               Something went wrong. Please try again.
             </p>
           )}
@@ -137,7 +137,7 @@ function RoleCard({
       </div>
       <div className="flex flex-col gap-0.5">
         <p className="text-base font-semibold">{title}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-base text-muted-foreground">{description}</p>
       </div>
     </button>
   )

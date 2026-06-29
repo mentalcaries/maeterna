@@ -88,6 +88,7 @@ export interface paths {
             "application/json":
               | components["schemas"]["Patient"]
               | components["schemas"]["Doctor"]
+              | components["schemas"]["DoctorVerificationFailed"]
           }
         }
         /** @description Missing or invalid session token */
@@ -125,6 +126,56 @@ export interface paths {
           content: {
             "application/json": components["schemas"]["Error"]
           }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/profile/complete/submit-for-review": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Submit doctor profile for manual MBTT verification review */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json": {
+            firstName: string
+            lastName: string
+            registrationNumber: string
+          }
+        }
+      }
+      responses: {
+        /** @description Submitted for review */
+        200: {
+          headers: { [name: string]: unknown }
+          content: {
+            "application/json": components["schemas"]["Doctor"]
+          }
+        }
+        401: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        403: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
         }
       }
     }
@@ -2187,6 +2238,9 @@ export interface components {
       affiliations: components["schemas"]["DoctorAffiliation"][]
       /** Format: date-time */
       createdAt: string
+    }
+    DoctorVerificationFailed: {
+      verificationFailed: true
     }
     DoctorAffiliation: {
       /** Format: uuid */

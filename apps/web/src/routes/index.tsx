@@ -10,13 +10,16 @@ export const Route = createFileRoute("/")({
 
     if (!user.role) throw redirect({ to: "/signup/select-role" })
 
-    if (!user.firstName) {
-      if (user.role === "patient") throw redirect({ to: "/signup/patient" })
-      if (user.role === "doctor") throw redirect({ to: "/signup/doctor" })
+    if (user.role === "patient") {
+      if (!user.firstName) throw redirect({ to: "/signup/patient" })
+      throw redirect({ to: "/patient/dashboard" })
     }
-
-    if (user.role === "patient") throw redirect({ to: "/patient/dashboard" })
-    if (user.role === "doctor") throw redirect({ to: "/doctor/dashboard" })
+    if (user.role === "doctor") {
+      if (!user.firstName) throw redirect({ to: "/signup/doctor" })
+      if (user.status === "pending_verification")
+        throw redirect({ to: "/signup/doctor/pending" })
+      throw redirect({ to: "/doctor/dashboard" })
+    }
     throw redirect({ to: "/admin/dashboard" })
   },
   component: () => null,

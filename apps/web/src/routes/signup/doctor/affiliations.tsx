@@ -103,7 +103,7 @@ function DoctorAffiliationsPage() {
           <img src="/logo.png" alt="Maeterna" className="rounded-full" />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Step 2 of 2 — Institution &amp; department
         </p>
       </div>
@@ -111,7 +111,7 @@ function DoctorAffiliationsPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Institution &amp; department</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base">
             Add your hospital or practice affiliations. You can add multiple.
           </CardDescription>
         </CardHeader>
@@ -152,13 +152,13 @@ function DoctorAffiliationsPage() {
               placeholder="Search institutions…"
               value={instQuery}
               onChange={(e) => setInstQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 text-base"
             />
           </div>
 
           <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
             {filteredInstitutions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 No institutions found.
               </p>
             ) : (
@@ -167,7 +167,7 @@ function DoctorAffiliationsPage() {
                   key={inst.id}
                   className="rounded-lg border border-border p-3"
                 >
-                  <p className="text-sm font-medium">{inst.name}</p>
+                  <p className="text-base font-medium">{inst.name}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {inst.departments.map((dept) => {
                       const isSelected = affiliations.some(
@@ -202,7 +202,7 @@ function DoctorAffiliationsPage() {
           </div>
 
           {affiliationsMutation.isError && (
-            <p className="text-sm text-destructive">
+            <p className="text-base text-destructive">
               Failed to save affiliations. Please try again.
             </p>
           )}

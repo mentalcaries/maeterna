@@ -10,10 +10,25 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/card"
-import { RiGoogleLine, RiMailLine, RiFingerprint2Line } from "@remixicon/react"
+import {
+  RiGoogleLine,
+  RiMailLine,
+  RiFingerprint2Line,
+  RiErrorWarningLine,
+} from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  INVALID_TOKEN: "This sign-in link is invalid. It may have already been used.",
+  TOKEN_EXPIRED: "This sign-in link has expired. Please request a new one.",
+  MAGIC_LINK_EXPIRED:
+    "This sign-in link has expired. Please request a new one.",
+}
+
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): { error?: string } => ({
+    error: typeof search.error === "string" ? search.error : undefined,
+  }),
   component: LoginPage,
 })
 
@@ -39,6 +54,7 @@ function AppHeader() {
 
 function LoginPage() {
   const navigate = useNavigate()
+  const { error: authError } = Route.useSearch()
   const [mode, setMode] = useState<Mode>("options")
   const [email, setEmail] = useState("")
   const [emailError, setEmailError] = useState("")
@@ -94,6 +110,16 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-start bg-background px-6 pt-[12vh] pb-12">
       <AppHeader />
+
+      {authError && (
+        <div className="mb-4 flex w-full max-w-sm items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+          <RiErrorWarningLine className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <p className="text-sm text-muted-foreground">
+            {AUTH_ERROR_MESSAGES[authError] ??
+              "Something went wrong with your sign-in link. Please try again."}
+          </p>
+        </div>
+      )}
 
       {mode === "magic-link-sent" ? (
         <Card className="w-full max-w-sm">
@@ -164,6 +190,7 @@ function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                   autoComplete="email"
+                  className="text-base"
                 />
                 {emailError && (
                   <p className="text-xs text-destructive">{emailError}</p>

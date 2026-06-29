@@ -27,14 +27,14 @@ function DoctorPendingPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-semibold">Pending verification</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold">Pending verification</h1>
+          <p className="text-base text-muted-foreground">
             Your account is pending verification by the Maeterna team. You'll be
             notified once approved.
           </p>
         </div>
 
-        <div className="w-full rounded-lg border border-border bg-muted/30 p-4 text-left text-xs text-muted-foreground">
+        <div className="w-full rounded-lg border border-border bg-muted/30 p-4 text-left text-sm text-muted-foreground">
           <p className="font-medium text-foreground">What happens next?</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             <li>The Maeterna admin team will review your application</li>

@@ -152,6 +152,14 @@ components:
           type: string
           format: date-time
 
+    DoctorVerificationFailed:
+      type: object
+      required: [verificationFailed]
+      properties:
+        verificationFailed:
+          type: boolean
+          enum: [true]
+
     DoctorAffiliation:
       type: object
       properties:
@@ -438,17 +446,52 @@ paths:
                   example: TT-12345
       responses:
         "200":
-          description: Profile saved. Returns updated user object.
+          description: Profile saved. Returns updated user object, or verificationFailed on MBTT lookup miss.
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: "#/components/schemas/Patient"
                   - $ref: "#/components/schemas/Doctor"
+                  - $ref: "#/components/schemas/DoctorVerificationFailed"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /profile/complete/submit-for-review:
+    post:
+      tags: [Profile]
+      summary: Submit doctor profile for manual MBTT verification review
+      description: >
+        Called when a doctor's MBTT auto-verification fails and they choose to
+        request manual review. Saves their name and registration number and sets
+        status to pending_verification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, registrationNumber]
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                registrationNumber:
+                  type: string
+      responses:
+        "200":
+          description: Submitted for review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /profile/doctor/affiliations:
     put:

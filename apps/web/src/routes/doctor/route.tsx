@@ -43,12 +43,12 @@ function DoctorLayout() {
     }
 
     if (!user.firstName) {
-      void navigate({ to: "/onboarding/doctor" })
+      void navigate({ to: "/signup/doctor" })
       return
     }
 
     if (user.status === "pending_verification") {
-      void navigate({ to: "/onboarding/doctor/pending" })
+      void navigate({ to: "/signup/doctor/pending" })
     }
   }, [sessionData, isPending, navigate, isExcluded])
 

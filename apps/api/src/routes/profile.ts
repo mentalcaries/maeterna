@@ -11,7 +11,13 @@ import {
   mbttRegistry,
 } from "../db/schema"
 import { sessionMiddleware } from "../middleware/session"
-import { PatientSchema, DoctorSchema, ErrorSchema, responses } from "../schemas"
+import {
+  PatientSchema,
+  DoctorSchema,
+  DoctorVerificationFailedSchema,
+  ErrorSchema,
+  responses,
+} from "../schemas"
 import { raise } from "../lib/errors"
 import { isValidRegistration } from "../lib/mbtt"
 import type { AppRouter } from "../types"
@@ -30,7 +36,7 @@ const completeProfileRoute = createRoute({
             firstName: z.string().min(1),
             lastName: z.string().min(1),
             dateOfBirth: z.string().optional(),
-            memberId: z.string().optional(),
+            registrationNumber: z.string().optional(),
           }),
         },
       },
@@ -39,7 +45,13 @@ const completeProfileRoute = createRoute({
   responses: {
     200: {
       content: {
-        "application/json": { schema: z.union([PatientSchema, DoctorSchema]) },
+        "application/json": {
+          schema: z.union([
+            PatientSchema,
+            DoctorSchema,
+            DoctorVerificationFailedSchema,
+          ]),
+        },
       },
       description: "Profile saved",
     },
@@ -75,6 +87,34 @@ const saveAffiliationsRoute = createRoute({
     200: {
       content: { "application/json": { schema: DoctorSchema } },
       description: "Affiliations saved",
+    },
+    ...responses,
+  },
+})
+
+const submitForReviewRoute = createRoute({
+  method: "post",
+  path: "/profile/complete/submit-for-review",
+  tags: ["Profile"],
+  summary: "Submit doctor profile for manual MBTT verification review",
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z.object({
+            firstName: z.string().min(1),
+            lastName: z.string().min(1),
+            registrationNumber: z.string().min(1),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: DoctorSchema } },
+      description: "Submitted for review",
     },
     ...responses,
   },
@@ -138,18 +178,18 @@ export function registerProfileRoutes(app: AppRouter) {
     const db = createDb(c.env.DB)
     const now = new Date()
 
-    await db
-      .update(userTable)
-      .set({
-        firstName: body.firstName,
-        lastName: body.lastName,
-        name: `${body.firstName} ${body.lastName}`,
-        updatedAt: now,
-      })
-      .where(eq(userTable.id, currentUser.id))
-
     if (currentUser.role === "patient") {
       if (!body.dateOfBirth) raise(422, "dateOfBirth is required for patients")
+
+      await db
+        .update(userTable)
+        .set({
+          firstName: body.firstName,
+          lastName: body.lastName,
+          name: `${body.firstName} ${body.lastName}`,
+          updatedAt: now,
+        })
+        .where(eq(userTable.id, currentUser.id))
 
       await db
         .insert(patientProfile)
@@ -188,13 +228,14 @@ export function registerProfileRoutes(app: AppRouter) {
       })
     }
 
-    // doctor
-    if (!body.memberId) raise(422, "memberId is required for doctors")
+    // doctor — compute verification first, no DB writes on failure
+    if (!body.registrationNumber)
+      raise(422, "registrationNumber is required for doctors")
 
     const registryEntry = await db
       .select()
       .from(mbttRegistry)
-      .where(eq(mbttRegistry.memberId, body.memberId))
+      .where(eq(mbttRegistry.memberId, body.registrationNumber))
       .get()
 
     const isNameMatch = (() => {
@@ -215,10 +256,17 @@ export function registerProfileRoutes(app: AppRouter) {
       isValidRegistration(registryEntry.status) &&
       isNameMatch
 
+    if (!verified) {
+      return c.json({ verificationFailed: true as const }, 200)
+    }
+
     await db
       .update(userTable)
       .set({
-        status: verified ? "active" : "pending_verification",
+        firstName: body.firstName,
+        lastName: body.lastName,
+        name: `${body.firstName} ${body.lastName}`,
+        status: "active",
         updatedAt: now,
       })
       .where(eq(userTable.id, currentUser.id))
@@ -228,13 +276,17 @@ export function registerProfileRoutes(app: AppRouter) {
       .values({
         id: crypto.randomUUID(),
         userId: currentUser.id,
-        registrationNumber: body.memberId,
-        verified,
+        registrationNumber: body.registrationNumber,
+        verified: true,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: doctorProfile.userId,
-        set: { registrationNumber: body.memberId, verified, updatedAt: now },
+        set: {
+          registrationNumber: body.registrationNumber,
+          verified: true,
+          updatedAt: now,
+        },
       })
 
     const updated = await db
@@ -254,9 +306,72 @@ export function registerProfileRoutes(app: AppRouter) {
       lastName: updated!.lastName ?? "",
       email: updated!.email,
       registrationNumber: profile?.registrationNumber ?? "",
-      verified: profile?.verified ?? false,
+      verified: true,
       role: updated!.role as "doctor",
-      status: updated!.status as "active" | "pending_verification",
+      status: updated!.status as "active",
+      affiliations: [],
+      createdAt: updated!.createdAt.toISOString(),
+    })
+  })
+
+  // POST /profile/complete/submit-for-review
+  app.openapi(submitForReviewRoute, async (c) => {
+    const currentUser = c.get("user")
+    if (currentUser.role !== "doctor")
+      raise(403, "Only doctors can submit for review")
+    const body = c.req.valid("json")
+    const db = createDb(c.env.DB)
+    const now = new Date()
+
+    await db
+      .update(userTable)
+      .set({
+        firstName: body.firstName,
+        lastName: body.lastName,
+        name: `${body.firstName} ${body.lastName}`,
+        status: "pending_verification",
+        updatedAt: now,
+      })
+      .where(eq(userTable.id, currentUser.id))
+
+    await db
+      .insert(doctorProfile)
+      .values({
+        id: crypto.randomUUID(),
+        userId: currentUser.id,
+        registrationNumber: body.registrationNumber,
+        verified: false,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: doctorProfile.userId,
+        set: {
+          registrationNumber: body.registrationNumber,
+          verified: false,
+          updatedAt: now,
+        },
+      })
+
+    const updated = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, currentUser.id))
+      .get()
+    const profile = await db
+      .select()
+      .from(doctorProfile)
+      .where(eq(doctorProfile.userId, currentUser.id))
+      .get()
+
+    return c.json({
+      id: updated!.id,
+      firstName: updated!.firstName ?? "",
+      lastName: updated!.lastName ?? "",
+      email: updated!.email,
+      registrationNumber: profile?.registrationNumber ?? "",
+      verified: false,
+      role: updated!.role as "doctor",
+      status: "pending_verification" as const,
       affiliations: [],
       createdAt: updated!.createdAt.toISOString(),
     })

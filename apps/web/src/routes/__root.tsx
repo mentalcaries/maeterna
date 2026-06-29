@@ -16,6 +16,10 @@ function RootComponent() {
   return (
     <>
       <Outlet />
+      <footer className="fixed right-0 bottom-0 left-0 z-30 border-t border-border bg-background py-2 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()}{" "}
+        <a href="https://fullstackcollective.com">Full Stack Collective</a>
+      </footer>
       <TanStackRouterDevtools position="bottom-right" />
       <ReactQueryDevtools initialIsOpen={false} />
     </>
