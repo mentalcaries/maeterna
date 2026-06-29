@@ -59,12 +59,19 @@ function PatientHistoryPage() {
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col gap-1 pt-4">
-        <h1 className="text-xl font-semibold">Reading history</h1>
-        <p className="text-sm text-muted-foreground">{total} readings total</p>
+        <h1 className="text-2xl font-semibold">Reading history</h1>
+        <p className="text-base text-muted-foreground">
+          {total} readings total
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="type-filter">Filter by type</Label>
+        <Label
+          htmlFor="type-filter"
+          className="text-base font-medium tracking-normal normal-case"
+        >
+          Filter by type
+        </Label>
         <Select
           value={typeFilter}
           onValueChange={(v) =>

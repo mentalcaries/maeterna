@@ -5,19 +5,11 @@ import {
   Link,
   useLocation,
 } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect } from "react"
 import { useSession } from "@/lib/session"
 import { authClient, getAppUser } from "@/lib/auth-client"
-import { apiClient } from "@/lib/api-client"
+import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/button"
-import { Input } from "@/components/input"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/dialog"
 import {
   RiHeartPulseLine,
   RiHistoryLine,
@@ -38,20 +30,6 @@ function PatientLayout() {
 
   const isLoginPage = location.pathname === "/patient/login"
 
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [deleteMode, setDeleteMode] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState("")
-
-  const deleteMutation = useMutation({
-    mutationFn: () => apiClient.DELETE("/patients/me"),
-    onSuccess: () => {
-      void authClient.signOut().then(() => {
-        queryClient.removeQueries({ queryKey: ["session"] })
-        void navigate({ to: "/login" })
-      })
-    },
-  })
-
   useEffect(() => {
     if (isPending || isLoginPage) return
     const user = getAppUser(sessionData)
@@ -71,19 +49,6 @@ function PatientLayout() {
       queryClient.removeQueries({ queryKey: ["session"] })
       void navigate({ to: "/login" })
     })
-  }
-
-  function handleDeleteAccount() {
-    if (deleteConfirm !== "DELETE") return
-    deleteMutation.mutate()
-  }
-
-  function handleSettingsClose(open: boolean) {
-    if (!open) {
-      setDeleteMode(false)
-      setDeleteConfirm("")
-    }
-    setSettingsOpen(open)
   }
 
   const navItems = [
@@ -131,14 +96,13 @@ function PatientLayout() {
           </nav>
 
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              onClick={() => setSettingsOpen(true)}
+            <Link
+              to="/patient/settings"
+              className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Account settings"
             >
               <RiSettings3Line className="size-5 md:size-6" />
-            </Button>
+            </Link>
             <Button
               variant="ghost"
               size="icon-lg"
@@ -182,83 +146,6 @@ function PatientLayout() {
           })}
         </div>
       </nav>
-
-      {/* Account settings dialog */}
-      <Dialog open={settingsOpen} onOpenChange={handleSettingsClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Account settings</DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-4 pt-2">
-            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-              <p className="text-sm font-semibold text-destructive">
-                Delete account
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                This will permanently delete all your readings, notes, access
-                grants, and access log entries. This cannot be undone.
-              </p>
-
-              {!deleteMode ? (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => setDeleteMode(true)}
-                >
-                  Delete my account
-                </Button>
-              ) : (
-                <div className="mt-3 flex flex-col gap-2">
-                  <p className="text-xs font-medium">
-                    Type{" "}
-                    <span className="font-mono font-bold tracking-widest">
-                      DELETE
-                    </span>{" "}
-                    to confirm:
-                  </p>
-                  <Input
-                    value={deleteConfirm}
-                    onChange={(e) => setDeleteConfirm(e.target.value)}
-                    placeholder="DELETE"
-                    autoComplete="off"
-                  />
-                  {deleteMutation.isError && (
-                    <p className="text-xs text-destructive">
-                      Failed to delete account. Please try again.
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={
-                        deleteConfirm !== "DELETE" || deleteMutation.isPending
-                      }
-                      onClick={handleDeleteAccount}
-                    >
-                      {deleteMutation.isPending
-                        ? "Deleting…"
-                        : "Confirm deletion"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setDeleteMode(false)
-                        setDeleteConfirm("")
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

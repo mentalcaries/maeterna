@@ -116,15 +116,15 @@ function PatientAccessPage() {
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col gap-1 pt-4">
-        <h1 className="text-xl font-semibold">Manage Access</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-semibold">Manage Access</h1>
+        <p className="text-base text-muted-foreground">
           Control which doctors can view your health data.
         </p>
       </div>
 
       {/* Search & Grant */}
       <div className="flex flex-col gap-3">
-        <p className="text-sm font-semibold">Grant access</p>
+        <p className="text-base font-semibold">Grant access</p>
         <div className="relative">
           <RiSearchLine className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -147,7 +147,7 @@ function PatientAccessPage() {
                   className="flex items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-muted/40"
                 >
                   <div className="flex flex-col gap-0.5">
-                    <p className="text-sm font-medium">{doctor.doctorName}</p>
+                    <p className="text-base font-medium">{doctor.doctorName}</p>
                     {primary ? (
                       <p className="text-xs text-muted-foreground">
                         {primary.departmentName} · {primary.institutionName}
@@ -162,7 +162,7 @@ function PatientAccessPage() {
         )}
 
         {query.trim().length >= 2 && filteredResults.length === 0 && (
-          <p className="text-sm text-muted-foreground">No doctors found.</p>
+          <p className="text-base text-muted-foreground">No doctors found.</p>
         )}
       </div>
 
@@ -186,7 +186,7 @@ function PatientAccessPage() {
 
         <TabsContent value="grants" className="mt-4">
           {grantsData.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center text-base text-muted-foreground">
               No active grants. Use the search above to grant access to a
               doctor.
             </div>
@@ -204,7 +204,9 @@ function PatientAccessPage() {
                       ) : (
                         <RiBuilding2Line className="size-3.5 text-muted-foreground" />
                       )}
-                      <p className="text-sm font-medium">{grant.granteeName}</p>
+                      <p className="text-base font-medium">
+                        {grant.granteeName}
+                      </p>
                       <Badge variant="secondary" className="text-xs">
                         {grant.grantType === "individual"
                           ? "Individual"
@@ -241,14 +243,14 @@ function PatientAccessPage() {
 
         <TabsContent value="log" className="mt-4">
           {accessLog.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center text-base text-muted-foreground">
               No access log entries yet.
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
               {accessLog.map((entry) => (
                 <div key={entry.id} className="flex flex-col gap-0.5 p-3">
-                  <p className="text-sm font-medium">{entry.doctorName}</p>
+                  <p className="text-base font-medium">{entry.doctorName}</p>
                   <p className="text-xs text-muted-foreground">
                     {entry.institutionName}
                   </p>

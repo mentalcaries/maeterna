@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignupSelectRoleRouteImport } from './routes/signup/select-role'
 import { Route as SignupPatientRouteImport } from './routes/signup/patient'
 import { Route as SignupDoctorRouteImport } from './routes/signup/doctor'
+import { Route as PatientSettingsRouteImport } from './routes/patient/settings'
 import { Route as PatientLoginRouteImport } from './routes/patient/login'
 import { Route as PatientLogRouteImport } from './routes/patient/log'
 import { Route as PatientHistoryRouteImport } from './routes/patient/history'
@@ -95,6 +96,11 @@ const SignupDoctorRoute = SignupDoctorRouteImport.update({
   id: '/doctor',
   path: '/doctor',
   getParentRoute: () => SignupRoute,
+} as any)
+const PatientSettingsRoute = PatientSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => PatientRouteRoute,
 } as any)
 const PatientLoginRoute = PatientLoginRouteImport.update({
   id: '/login',
@@ -256,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/patient/history': typeof PatientHistoryRoute
   '/patient/log': typeof PatientLogRoute
   '/patient/login': typeof PatientLoginRoute
+  '/patient/settings': typeof PatientSettingsRoute
   '/signup/doctor': typeof SignupDoctorRouteWithChildren
   '/signup/patient': typeof SignupPatientRoute
   '/signup/select-role': typeof SignupSelectRoleRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/patient/history': typeof PatientHistoryRoute
   '/patient/log': typeof PatientLogRoute
   '/patient/login': typeof PatientLoginRoute
+  '/patient/settings': typeof PatientSettingsRoute
   '/signup/patient': typeof SignupPatientRoute
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/patient/history': typeof PatientHistoryRoute
   '/patient/log': typeof PatientLogRoute
   '/patient/login': typeof PatientLoginRoute
+  '/patient/settings': typeof PatientSettingsRoute
   '/signup/doctor': typeof SignupDoctorRouteWithChildren
   '/signup/patient': typeof SignupPatientRoute
   '/signup/select-role': typeof SignupSelectRoleRoute
@@ -372,6 +381,7 @@ export interface FileRouteTypes {
     | '/patient/history'
     | '/patient/log'
     | '/patient/login'
+    | '/patient/settings'
     | '/signup/doctor'
     | '/signup/patient'
     | '/signup/select-role'
@@ -410,6 +420,7 @@ export interface FileRouteTypes {
     | '/patient/history'
     | '/patient/log'
     | '/patient/login'
+    | '/patient/settings'
     | '/signup/patient'
     | '/signup/select-role'
     | '/doctor/patients/$id'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/patient/history'
     | '/patient/log'
     | '/patient/login'
+    | '/patient/settings'
     | '/signup/doctor'
     | '/signup/patient'
     | '/signup/select-role'
@@ -544,6 +556,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup/doctor'
       preLoaderRoute: typeof SignupDoctorRouteImport
       parentRoute: typeof SignupRoute
+    }
+    '/patient/settings': {
+      id: '/patient/settings'
+      path: '/settings'
+      fullPath: '/patient/settings'
+      preLoaderRoute: typeof PatientSettingsRouteImport
+      parentRoute: typeof PatientRouteRoute
     }
     '/patient/login': {
       id: '/patient/login'
@@ -782,6 +801,7 @@ interface PatientRouteRouteChildren {
   PatientHistoryRoute: typeof PatientHistoryRoute
   PatientLogRoute: typeof PatientLogRoute
   PatientLoginRoute: typeof PatientLoginRoute
+  PatientSettingsRoute: typeof PatientSettingsRoute
 }
 
 const PatientRouteRouteChildren: PatientRouteRouteChildren = {
@@ -790,6 +810,7 @@ const PatientRouteRouteChildren: PatientRouteRouteChildren = {
   PatientHistoryRoute: PatientHistoryRoute,
   PatientLogRoute: PatientLogRoute,
   PatientLoginRoute: PatientLoginRoute,
+  PatientSettingsRoute: PatientSettingsRoute,
 }
 
 const PatientRouteRouteWithChildren = PatientRouteRoute._addFileChildren(

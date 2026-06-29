@@ -57,10 +57,10 @@ function PatientDashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col gap-1 pt-4">
-        <h1 className="text-xl font-semibold">
+        <h1 className="text-2xl font-semibold">
           {greeting}, {firstName}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Track your glucose and blood pressure readings.
         </p>
       </div>
@@ -69,7 +69,7 @@ function PatientDashboardPage() {
         <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900/50 dark:bg-yellow-950/20">
           <CardContent className="flex items-center gap-3 p-4">
             <Badge variant="warning">{alertCount}</Badge>
-            <p className="text-sm text-yellow-800 dark:text-yellow-400">
+            <p className="text-base text-yellow-800 dark:text-yellow-400">
               {alertCount === 1 ? "reading" : "readings"} out of normal range in
               your history.
             </p>
@@ -88,12 +88,12 @@ function PatientDashboardPage() {
         <div className="flex items-center justify-between">
           <Card className="border-0 bg-transparent p-0 shadow-none">
             <CardHeader className="p-0">
-              <CardTitle className="text-sm">Recent readings</CardTitle>
+              <CardTitle className="text-base">Recent readings</CardTitle>
             </CardHeader>
           </Card>
           <Link
             to="/patient/history"
-            className="text-xs text-primary underline underline-offset-2"
+            className="text-sm text-primary underline underline-offset-2"
           >
             View all
           </Link>

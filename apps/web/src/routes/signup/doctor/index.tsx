@@ -106,9 +106,15 @@ function DoctorProfilePage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="firstName">First name</Label>
+                <Label
+                  htmlFor="firstName"
+                  className="text-base font-medium tracking-normal normal-case"
+                >
+                  First name
+                </Label>
                 <Input
                   id="firstName"
+                  className="text-base"
                   placeholder="First name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -116,9 +122,15 @@ function DoctorProfilePage() {
                 />
               </div>
               <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="lastName">Last name</Label>
+                <Label
+                  htmlFor="lastName"
+                  className="text-base font-medium tracking-normal normal-case"
+                >
+                  Last name
+                </Label>
                 <Input
                   id="lastName"
+                  className="text-base"
                   placeholder="Last name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -128,16 +140,22 @@ function DoctorProfilePage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="reg">MBTT Member ID</Label>
+              <Label
+                htmlFor="reg"
+                className="text-base font-medium tracking-normal normal-case"
+              >
+                MBTT Member ID
+              </Label>
               <Input
                 id="reg"
+                className="text-base"
                 placeholder="e.g. 10284"
                 value={registrationNumber}
                 onChange={(e) => setRegistrationNumber(e.target.value)}
                 autoComplete="off"
                 inputMode="numeric"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Your numeric member ID as listed on the MBTT national registry.
               </p>
             </div>

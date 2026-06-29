@@ -60,7 +60,7 @@ export function ReadingList({
 }: ReadingListProps) {
   if (readings.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed border-border p-8 text-center text-base text-muted-foreground">
         {emptyMessage}
       </div>
     )
@@ -78,7 +78,7 @@ export function ReadingList({
           <div key={r.id} className="flex flex-col gap-1 p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold">{valueStr}</p>
+                <p className="text-base font-semibold">{valueStr}</p>
                 <p className="text-xs text-muted-foreground">
                   {readingSubtitle(r)}
                 </p>

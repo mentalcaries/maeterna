@@ -95,9 +95,15 @@ function PatientProfilePage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex gap-3">
               <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="firstName">First name</Label>
+                <Label
+                  htmlFor="firstName"
+                  className="text-base font-medium tracking-normal normal-case"
+                >
+                  First name
+                </Label>
                 <Input
                   id="firstName"
+                  className="text-base"
                   placeholder="First name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -105,9 +111,15 @@ function PatientProfilePage() {
                 />
               </div>
               <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="lastName">Last name</Label>
+                <Label
+                  htmlFor="lastName"
+                  className="text-base font-medium tracking-normal normal-case"
+                >
+                  Last name
+                </Label>
                 <Input
                   id="lastName"
+                  className="text-base"
                   placeholder="Last name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -117,7 +129,9 @@ function PatientProfilePage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Date of birth</Label>
+              <Label className="text-base font-medium tracking-normal normal-case">
+                Date of birth
+              </Label>
               <Popover open={dobOpen} onOpenChange={setDobOpen}>
                 <PopoverTrigger
                   type="button"
