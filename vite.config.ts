@@ -17,7 +17,7 @@ export default defineConfig({
     trailingComma: "es5",
     printWidth: 80,
     sortTailwindcss: {
-      stylesheet: "packages/ui/src/styles/globals.css",
+      stylesheet: "apps/web/src/styles/globals.css",
       functions: ["cn", "cva"],
     },
     sortPackageJson: false,

@@ -1,15 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Button } from "@/components/button"
+import { Input } from "@/components/input"
+import { Label } from "@/components/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import { apiClient } from "@/lib/api-client"
 
 export const Route = createFileRoute("/admin/invite")({

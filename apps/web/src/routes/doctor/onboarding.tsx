@@ -1,17 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
+import { Button } from "@/components/button"
+import { Input } from "@/components/input"
+import { Label } from "@/components/label"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@workspace/ui/components/card"
-import { Badge } from "@workspace/ui/components/badge"
-import { Separator } from "@workspace/ui/components/separator"
+} from "@/components/card"
+import { Badge } from "@/components/badge"
+import { Separator } from "@/components/separator"
 import {
   RiHeartPulseLine,
   RiSearchLine,

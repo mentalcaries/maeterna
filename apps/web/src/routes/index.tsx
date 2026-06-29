@@ -8,6 +8,8 @@ export const Route = createFileRoute("/")({
 
     if (!user) throw redirect({ to: "/login" })
 
+    if (!user.role) throw redirect({ to: "/signup/select-role" })
+
     if (!user.firstName) {
       if (user.role === "patient") throw redirect({ to: "/signup/patient" })
       if (user.role === "doctor") throw redirect({ to: "/signup/doctor" })

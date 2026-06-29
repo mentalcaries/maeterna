@@ -1,24 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@/components/button"
+import { Input } from "@/components/input"
+import { Badge } from "@/components/badge"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@workspace/ui/components/dialog"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@workspace/ui/components/tabs"
-import { Separator } from "@workspace/ui/components/separator"
-import { cn } from "@workspace/ui/lib/utils"
+} from "@/components/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
+import { Separator } from "@/components/separator"
+import { cn } from "@/lib/utils"
 import { RiSearchLine, RiUserLine, RiBuilding2Line } from "@remixicon/react"
 import { apiClient } from "@/lib/api-client"
 import type { components } from "@/lib/api.types"

@@ -1,4 +1,4 @@
-import { Badge } from "@workspace/ui/components/badge"
+import { Badge } from "@/components/badge"
 import type { AlertSeverity } from "@/lib/thresholds"
 
 interface ReadingBadgeProps {

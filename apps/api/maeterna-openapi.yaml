@@ -1,0 +1,1264 @@
+openapi: 3.0.3
+info:
+  title: Maeterna API
+  description: >
+    REST API for Maeterna — a maternal health monitoring app for pregnant women
+    and their OB-GYN doctors in Trinidad & Tobago. Built with Hono on Cloudflare
+    Workers, Cloudflare D1, and Better Auth.
+  version: 1.0.0
+
+servers:
+  - url: https://api.maeterna.app
+    description: Production
+  - url: http://localhost:8787
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Profile
+    description: Patient and doctor profile completion after first sign-in
+  - name: Patients
+    description: Patient self-service endpoints
+  - name: Readings
+    description: Logging and retrieving health readings
+  - name: Access
+    description: Patient access grant management
+  - name: Doctors
+    description: Doctor profile and patient access
+  - name: Institutions
+    description: Institutions and departments
+  - name: Invites
+    description: Doctor-generated patient invite links
+  - name: Admin
+    description: Super admin platform management
+
+# ---------------------------------------------------------------------------
+# Reusable components
+# ---------------------------------------------------------------------------
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Better Auth session token
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: UNAUTHORIZED
+        message:
+          type: string
+          example: You are not authorised to perform this action
+
+    Role:
+      type: string
+      enum: [patient, doctor, admin]
+
+    UserStatus:
+      type: string
+      enum: [active, suspended, pending_verification]
+
+    ReadingType:
+      type: string
+      enum: [glucose, blood_pressure]
+
+    GlucoseContext:
+      type: string
+      enum: [fasting, post_meal, morning, before_bed]
+
+    BPContext:
+      type: string
+      enum: [morning, evening, before_bed, at_clinic]
+
+    Severity:
+      type: string
+      enum: [normal, warning, critical]
+
+    GrantType:
+      type: string
+      enum: [individual, department]
+
+    InstitutionType:
+      type: string
+      enum: [hospital, health_centre, private_practice]
+
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+          example: Kezia
+        lastName:
+          type: string
+          example: Celestine
+        email:
+          type: string
+          format: email
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1995-03-14"
+        avatarUrl:
+          type: string
+          nullable: true
+          description: Google profile photo URL if signed in via Google, otherwise null
+        role:
+          $ref: "#/components/schemas/Role"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        createdAt:
+          type: string
+          format: date-time
+
+    Doctor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+          example: Marlon
+        lastName:
+          type: string
+          example: Prescod
+        email:
+          type: string
+          format: email
+        registrationNumber:
+          type: string
+          example: TT-12345
+        verified:
+          type: boolean
+        role:
+          $ref: "#/components/schemas/Role"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        affiliations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctorAffiliation"
+        createdAt:
+          type: string
+          format: date-time
+
+    DoctorAffiliation:
+      type: object
+      properties:
+        institutionId:
+          type: string
+          format: uuid
+        institutionName:
+          type: string
+          example: Port of Spain General Hospital
+        departmentId:
+          type: string
+          format: uuid
+        departmentName:
+          type: string
+          example: Obstetrics & Gynaecology
+
+    Institution:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Port of Spain General Hospital
+        type:
+          $ref: "#/components/schemas/InstitutionType"
+        departments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Department"
+
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institutionId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Obstetrics & Gynaecology
+
+    Reading:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        loggedById:
+          type: string
+          format: uuid
+          description: ID of the patient or doctor who created this reading
+        type:
+          $ref: "#/components/schemas/ReadingType"
+        value1:
+          type: number
+          description: Glucose value (mmol/L) or systolic BP (mmHg)
+          example: 5.4
+        value2:
+          type: number
+          nullable: true
+          description: Diastolic BP (mmHg) — only present for blood_pressure readings
+          example: 85
+        unit:
+          type: string
+          example: mmol/L
+        context:
+          type: string
+          description: GlucoseContext or BPContext depending on reading type
+          example: fasting
+        notes:
+          type: string
+          nullable: true
+          example: Taken after a short walk
+        timestamp:
+          type: string
+          format: date-time
+          description: When the reading was taken (not when it was logged)
+        severity:
+          $ref: "#/components/schemas/Severity"
+        createdAt:
+          type: string
+          format: date-time
+
+    AccessGrant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        grantType:
+          $ref: "#/components/schemas/GrantType"
+        granteeId:
+          type: string
+          format: uuid
+          description: Doctor ID (individual) or Department ID (department)
+        granteeName:
+          type: string
+          example: Dr. Marlon Prescod
+        institutionName:
+          type: string
+          example: Port of Spain General Hospital
+        grantedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    AccessLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        doctorName:
+          type: string
+          example: Dr. Marlon Prescod
+        institutionName:
+          type: string
+          example: Port of Spain General Hospital
+        accessedAt:
+          type: string
+          format: date-time
+
+    Thresholds:
+      type: object
+      properties:
+        fastingGlucoseWarning:
+          type: number
+          example: 5.3
+        fastingGlucoseCritical:
+          type: number
+          example: 7.0
+        postMealGlucoseWarning:
+          type: number
+          example: 7.8
+        postMealGlucoseCritical:
+          type: number
+          example: 11.1
+        systolicWarning:
+          type: number
+          example: 140
+        systolicCritical:
+          type: number
+          example: 160
+        diastolicWarning:
+          type: number
+          example: 90
+        diastolicCritical:
+          type: number
+          example: 110
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        actorName:
+          type: string
+          example: Admin
+        action:
+          type: string
+          example: SUSPEND_USER
+        targetId:
+          type: string
+          format: uuid
+          nullable: true
+        targetName:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    Invite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+        doctorId:
+          type: string
+          format: uuid
+        doctorName:
+          type: string
+          example: Dr. Marlon Prescod
+        institutionName:
+          type: string
+          example: Prescod Medical Centre
+        departmentName:
+          type: string
+          example: General Practice
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid session token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Authenticated but insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnprocessableEntity:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+  # -------------------------------------------------------------------------
+  # Profile — post-auth onboarding for both roles
+  # -------------------------------------------------------------------------
+
+  /profile/complete:
+    post:
+      tags: [Profile]
+      summary: Complete profile after first sign-in
+      description: >
+        Called once after a user signs in for the first time via magic link,
+        passkey, or Google. Saves name, DOB (patients), or registration number
+        (doctors). Role is determined from the session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName]
+              properties:
+                firstName:
+                  type: string
+                  example: Kezia
+                lastName:
+                  type: string
+                  example: Celestine
+                dateOfBirth:
+                  type: string
+                  format: date
+                  description: Required for patients
+                  example: "1995-03-14"
+                registrationNumber:
+                  type: string
+                  description: Required for doctors — triggers MBTT verification
+                  example: TT-12345
+      responses:
+        "200":
+          description: Profile saved. Returns updated user object.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Patient"
+                  - $ref: "#/components/schemas/Doctor"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /profile/doctor/affiliations:
+    put:
+      tags: [Profile]
+      summary: Save doctor institution and department affiliations
+      description: >
+        Called during doctor onboarding step 2, after registration number
+        verification. Can also be used later to update affiliations.
+        Replaces all existing affiliations for this doctor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [affiliations]
+              properties:
+                affiliations:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [institutionId, departmentId]
+                    properties:
+                      institutionId:
+                        type: string
+                        format: uuid
+                      departmentId:
+                        type: string
+                        format: uuid
+      responses:
+        "200":
+          description: Affiliations saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # -------------------------------------------------------------------------
+  # Patients — self-service
+  # -------------------------------------------------------------------------
+
+  /patients/me:
+    get:
+      tags: [Patients]
+      summary: Get own patient profile
+      responses:
+        "200":
+          description: Patient profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    patch:
+      tags: [Patients]
+      summary: Update own patient profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                dateOfBirth:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: Updated patient profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    delete:
+      tags: [Patients]
+      summary: Delete own account
+      description: >
+        Hard deletes the patient account and all associated data — readings,
+        notes, access grants, and access log entries. This cannot be undone.
+      responses:
+        "204":
+          description: Account and all associated data deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------------------------
+  # Readings
+  # -------------------------------------------------------------------------
+
+  /patients/me/readings:
+    get:
+      tags: [Readings]
+      summary: Get own reading history
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/ReadingType"
+          description: Filter by reading type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of readings, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reading"
+                  total:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Readings]
+      summary: Log a new reading (patient)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, value1, context, timestamp]
+              properties:
+                type:
+                  $ref: "#/components/schemas/ReadingType"
+                value1:
+                  type: number
+                  description: Glucose (mmol/L) or systolic BP (mmHg)
+                  example: 5.4
+                value2:
+                  type: number
+                  nullable: true
+                  description: Diastolic BP (mmHg) — required if type is blood_pressure
+                  example: 85
+                context:
+                  type: string
+                  description: GlucoseContext or BPContext depending on type
+                  example: fasting
+                notes:
+                  type: string
+                  nullable: true
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: When the reading was taken. Use current time for "Now", or a past datetime for retrospective entries.
+      responses:
+        "201":
+          description: Reading created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reading"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /patients/{patientId}/readings:
+    post:
+      tags: [Readings]
+      summary: Log a reading on behalf of a patient (doctor — clinic visit)
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, value1, context, timestamp]
+              properties:
+                type:
+                  $ref: "#/components/schemas/ReadingType"
+                value1:
+                  type: number
+                value2:
+                  type: number
+                  nullable: true
+                context:
+                  type: string
+                notes:
+                  type: string
+                  nullable: true
+                timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        "201":
+          description: Reading created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reading"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /readings/{readingId}/notes:
+    patch:
+      tags: [Readings]
+      summary: Add or edit a note on a reading (doctor)
+      parameters:
+        - name: readingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notes]
+              properties:
+                notes:
+                  type: string
+                  example: Patient reported feeling dizzy before this reading
+      responses:
+        "200":
+          description: Reading with updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reading"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Access grants
+  # -------------------------------------------------------------------------
+
+  /patients/me/grants:
+    get:
+      tags: [Access]
+      summary: List active access grants
+      responses:
+        "200":
+          description: Active grants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccessGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Access]
+      summary: Grant access to a doctor or department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [grantType, granteeId]
+              properties:
+                grantType:
+                  $ref: "#/components/schemas/GrantType"
+                granteeId:
+                  type: string
+                  format: uuid
+                  description: Doctor ID (individual) or Department ID (department)
+      responses:
+        "201":
+          description: Grant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Grant already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /patients/me/grants/{grantId}:
+    delete:
+      tags: [Access]
+      summary: Revoke an access grant
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Grant revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /patients/me/access-log:
+    get:
+      tags: [Access]
+      summary: View who has accessed patient records
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Access log entries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccessLogEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------------------------
+  # Search — for patients finding doctors to grant access to
+  # -------------------------------------------------------------------------
+
+  /search/doctors:
+    get:
+      tags: [Doctors]
+      summary: Search doctors by name or institution
+      description: Used by patients to find a doctor or department to grant access to.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          description: Search term — matches doctor name or institution name
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Matching doctors with their affiliations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    doctorId:
+                      type: string
+                      format: uuid
+                    doctorName:
+                      type: string
+                    affiliations:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/DoctorAffiliation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------------------------
+  # Institutions
+  # -------------------------------------------------------------------------
+
+  /institutions:
+    get:
+      tags: [Institutions]
+      summary: List all institutions with their departments
+      description: Used during doctor onboarding to select affiliations.
+      responses:
+        "200":
+          description: All institutions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Institution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # -------------------------------------------------------------------------
+  # Doctors
+  # -------------------------------------------------------------------------
+
+  /doctors/me:
+    get:
+      tags: [Doctors]
+      summary: Get own doctor profile
+      responses:
+        "200":
+          description: Doctor profile with affiliations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /doctors/me/patients:
+    get:
+      tags: [Doctors]
+      summary: List patients who have granted this doctor access
+      responses:
+        "200":
+          description: Patient list with unread alert counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    patient:
+                      $ref: "#/components/schemas/Patient"
+                    unreadAlertCount:
+                      type: integer
+                      example: 3
+                    lastReadingAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /doctors/me/patients/{patientId}:
+    get:
+      tags: [Doctors]
+      summary: Get a patient's full detail — readings and profile
+      description: >
+        Returns the patient profile and all readings. Also creates an access log
+        entry recording that this doctor viewed the patient's records.
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Patient detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patient:
+                    $ref: "#/components/schemas/Patient"
+                  readings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reading"
+                  thresholds:
+                    $ref: "#/components/schemas/Thresholds"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # Thresholds
+  # -------------------------------------------------------------------------
+
+  /doctors/me/patients/{patientId}/thresholds:
+    get:
+      tags: [Doctors]
+      summary: Get thresholds for a patient
+      description: Returns custom thresholds if set, otherwise platform defaults.
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Thresholds (custom or default)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  thresholds:
+                    $ref: "#/components/schemas/Thresholds"
+                  isCustom:
+                    type: boolean
+                    description: True if these are doctor-set custom thresholds
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      tags: [Doctors]
+      summary: Set custom alert thresholds for a patient
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Thresholds"
+      responses:
+        "200":
+          description: Custom thresholds saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thresholds"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # -------------------------------------------------------------------------
+  # Invites
+  # -------------------------------------------------------------------------
+
+  /invites:
+    post:
+      tags: [Invites]
+      summary: Doctor creates a patient invite link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [departmentId]
+              properties:
+                departmentId:
+                  type: string
+                  format: uuid
+                  description: The department context for this invite
+      responses:
+        "201":
+          description: Invite created with token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invite"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /invites/{token}:
+    get:
+      tags: [Invites]
+      summary: Resolve an invite token
+      description: >
+        Called during patient signup when arriving via an invite link.
+        Returns doctor and institution info so the patient can confirm the
+        access grant during onboarding. No auth required.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invite details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invite"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: Invite has expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # -------------------------------------------------------------------------
+  # Admin
+  # -------------------------------------------------------------------------
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List all users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: "#/components/schemas/Role"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/UserStatus"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      oneOf:
+                        - $ref: "#/components/schemas/Patient"
+                        - $ref: "#/components/schemas/Doctor"
+                  total:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/users/{userId}/status:
+    patch:
+      tags: [Admin]
+      summary: Suspend or reactivate a user account
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, suspended]
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Patient"
+                  - $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/users/{userId}/approve:
+    post:
+      tags: [Admin]
+      summary: Approve a flagged doctor account
+      description: Used when a doctor's registration number was not found in the MBTT registry and requires manual review.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Doctor approved and account activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/invites:
+    post:
+      tags: [Admin]
+      summary: Admin sends an invite to a patient or doctor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [patient, doctor]
+                name:
+                  type: string
+                  description: Optional — pre-fills name on signup
+      responses:
+        "201":
+          description: Invite sent
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/audit-log:
+    get:
+      tags: [Admin]
+      summary: Get platform audit log
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Audit log entries, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditLogEntry"
+                  total:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"

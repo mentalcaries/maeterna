@@ -3,30 +3,20 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
-import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@/components/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
+import { Badge } from "@/components/badge"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@workspace/ui/components/dialog"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { Textarea } from "@workspace/ui/components/textarea"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@workspace/ui/components/tabs"
+} from "@/components/dialog"
+import { Input } from "@/components/input"
+import { Label } from "@/components/label"
+import { Textarea } from "@/components/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
 import {
   Table,
   TableBody,
@@ -34,8 +24,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@workspace/ui/components/table"
-import { Separator } from "@workspace/ui/components/separator"
+} from "@/components/table"
+import { Separator } from "@/components/separator"
 import { apiClient } from "@/lib/api-client"
 import type { components } from "@/lib/api.types"
 import { ReadingBadge } from "@/components/readings/ReadingBadge"

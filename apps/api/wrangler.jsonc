@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "maeterna-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "maeterna",
+      "database_id": "37009e7c-aaf6-4583-b1f2-c37c15484e9b",
+      "migrations_dir": "drizzle/migrations",
+    },
+  ],
+  "triggers": {
+    "crons": ["0 6 1 * *"],
+  },
+  "vars": {
+    "SUPER_ADMIN_EMAIL": "devjaggernauth@gmail.com",
+  },
+}

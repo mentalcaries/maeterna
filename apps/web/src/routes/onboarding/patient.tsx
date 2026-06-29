@@ -1,29 +1,25 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
+import { Button } from "@/components/button"
+import { Input } from "@/components/input"
+import { Label } from "@/components/label"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@workspace/ui/components/card"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@workspace/ui/components/popover"
-import { Calendar } from "@workspace/ui/components/calendar"
+} from "@/components/card"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/popover"
+import { Calendar } from "@/components/calendar"
 import {
   RiHeartPulseLine,
   RiCalendarLine,
   RiUserLine,
   RiBuilding2Line,
 } from "@remixicon/react"
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/api-client"
 
 export const Route = createFileRoute("/onboarding/patient")({

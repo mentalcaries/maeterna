@@ -1,13 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
-import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@/components/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
+import { Badge } from "@/components/badge"
 import { RiAddLine } from "@remixicon/react"
 import { useSession } from "@/lib/session"
 import { getAppUser } from "@/lib/auth-client"

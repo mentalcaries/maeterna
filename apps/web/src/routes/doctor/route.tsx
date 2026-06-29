@@ -9,13 +9,13 @@ import { useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "@/lib/session"
 import { authClient, getAppUser } from "@/lib/auth-client"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@/components/button"
 import {
   RiHeartPulseLine,
   RiGroupLine,
   RiLogoutBoxLine,
 } from "@remixicon/react"
-import { cn } from "@workspace/ui/lib/utils"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/doctor")({ component: DoctorLayout })
 

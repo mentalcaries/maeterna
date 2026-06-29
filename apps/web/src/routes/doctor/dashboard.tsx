@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { Card, CardContent } from "@workspace/ui/components/card"
-import { Badge } from "@workspace/ui/components/badge"
+import { Card, CardContent } from "@/components/card"
+import { Badge } from "@/components/badge"
 import { apiClient } from "@/lib/api-client"
 import { RiAlertLine, RiArrowRightLine } from "@remixicon/react"
 

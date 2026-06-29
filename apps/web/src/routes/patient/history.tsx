@@ -9,8 +9,8 @@ import {
   SelectContent,
   SelectItem,
   SelectValue,
-} from "@workspace/ui/components/select"
-import { Label } from "@workspace/ui/components/label"
+} from "@/components/select"
+import { Label } from "@/components/label"
 import type { Reading } from "@/mock/db"
 import type { components } from "@/lib/api.types"
 

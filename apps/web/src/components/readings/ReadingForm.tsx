@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { Textarea } from "@workspace/ui/components/textarea"
-import { cn } from "@workspace/ui/lib/utils"
+import { Button } from "@/components/button"
+import { Input } from "@/components/input"
+import { Label } from "@/components/label"
+import { Textarea } from "@/components/textarea"
+import { cn } from "@/lib/utils"
 import {
   RiDropLine,
   RiHeartPulseLine,
@@ -16,19 +16,15 @@ import {
   RiTimeLine,
   RiCalendarLine,
 } from "@remixicon/react"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@workspace/ui/components/popover"
-import { Calendar } from "@workspace/ui/components/calendar"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/popover"
+import { Calendar } from "@/components/calendar"
 import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
   SelectValue,
-} from "@workspace/ui/components/select"
+} from "@/components/select"
 import type { ReadingType } from "@/mock/db"
 
 type MealContext = "fasted" | "post_meal"

@@ -4,6 +4,53 @@
  */
 
 export interface paths {
+  "/profile/role": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    /** Set role for a new user who has no role yet */
+    patch: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json": {
+            role: "patient" | "doctor"
+          }
+        }
+      }
+      responses: {
+        /** @description Role set */
+        200: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": { role: string } }
+        }
+        /** @description Role already set */
+        409: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        401: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+      }
+    }
+    trace?: never
+  }
   "/profile/complete": {
     parameters: {
       query?: never

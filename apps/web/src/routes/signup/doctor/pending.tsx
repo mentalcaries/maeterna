@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@/components/button"
 import { RiTimeLine } from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 

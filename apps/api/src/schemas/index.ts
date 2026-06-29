@@ -1,0 +1,175 @@
+import { z } from "@hono/zod-openapi"
+
+export const RoleSchema = z.enum(["patient", "doctor", "admin"])
+export const UserStatusSchema = z.enum([
+  "active",
+  "suspended",
+  "pending_verification",
+])
+export const ReadingTypeSchema = z.enum(["glucose", "blood_pressure"])
+export const SeveritySchema = z.enum(["normal", "warning", "critical"])
+export const GrantTypeSchema = z.enum(["individual", "department"])
+export const InstitutionTypeSchema = z.enum([
+  "hospital",
+  "health_centre",
+  "private_practice",
+])
+
+export const ErrorSchema = z
+  .object({
+    code: z.string(),
+    message: z.string(),
+  })
+  .openapi("Error")
+
+export const ThresholdsSchema = z
+  .object({
+    fastingGlucoseWarning: z.number(),
+    fastingGlucoseCritical: z.number(),
+    postMealGlucoseWarning: z.number(),
+    postMealGlucoseCritical: z.number(),
+    systolicWarning: z.number(),
+    systolicCritical: z.number(),
+    diastolicWarning: z.number(),
+    diastolicCritical: z.number(),
+  })
+  .openapi("Thresholds")
+
+export const DoctorAffiliationSchema = z
+  .object({
+    institutionId: z.string().uuid(),
+    institutionName: z.string(),
+    departmentId: z.string().uuid(),
+    departmentName: z.string(),
+  })
+  .openapi("DoctorAffiliation")
+
+export const PatientSchema = z
+  .object({
+    id: z.string().uuid(),
+    firstName: z.string(),
+    lastName: z.string(),
+    email: z.string().email(),
+    dateOfBirth: z.string(),
+    avatarUrl: z.string().nullable(),
+    role: RoleSchema,
+    status: UserStatusSchema,
+    createdAt: z.string().datetime(),
+  })
+  .openapi("Patient")
+
+export const DoctorSchema = z
+  .object({
+    id: z.string().uuid(),
+    firstName: z.string(),
+    lastName: z.string(),
+    email: z.string().email(),
+    registrationNumber: z.string(),
+    verified: z.boolean(),
+    role: RoleSchema,
+    status: UserStatusSchema,
+    affiliations: z.array(DoctorAffiliationSchema),
+    createdAt: z.string().datetime(),
+  })
+  .openapi("Doctor")
+
+export const DepartmentSchema = z
+  .object({
+    id: z.string().uuid(),
+    institutionId: z.string().uuid(),
+    name: z.string(),
+  })
+  .openapi("Department")
+
+export const InstitutionSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    type: InstitutionTypeSchema,
+    departments: z.array(DepartmentSchema),
+  })
+  .openapi("Institution")
+
+export const ReadingSchema = z
+  .object({
+    id: z.string().uuid(),
+    patientId: z.string().uuid(),
+    loggedById: z.string().uuid(),
+    type: ReadingTypeSchema,
+    value1: z.number(),
+    value2: z.number().nullable(),
+    unit: z.string(),
+    context: z.string(),
+    notes: z.string().nullable(),
+    timestamp: z.string().datetime(),
+    severity: SeveritySchema,
+    createdAt: z.string().datetime(),
+  })
+  .openapi("Reading")
+
+export const AccessGrantSchema = z
+  .object({
+    id: z.string().uuid(),
+    patientId: z.string().uuid(),
+    grantType: GrantTypeSchema,
+    granteeId: z.string().uuid(),
+    granteeName: z.string(),
+    institutionName: z.string(),
+    grantedAt: z.string().datetime(),
+    revokedAt: z.string().datetime().nullable(),
+  })
+  .openapi("AccessGrant")
+
+export const AccessLogEntrySchema = z
+  .object({
+    id: z.string().uuid(),
+    doctorId: z.string().uuid(),
+    doctorName: z.string(),
+    institutionName: z.string(),
+    accessedAt: z.string().datetime(),
+  })
+  .openapi("AccessLogEntry")
+
+export const InviteSchema = z
+  .object({
+    id: z.string().uuid(),
+    token: z.string(),
+    doctorId: z.string().uuid(),
+    doctorName: z.string(),
+    institutionName: z.string(),
+    departmentName: z.string(),
+    expiresAt: z.string().datetime(),
+    createdAt: z.string().datetime(),
+  })
+  .openapi("Invite")
+
+export const AuditLogEntrySchema = z
+  .object({
+    id: z.string().uuid(),
+    actorId: z.string().uuid(),
+    actorName: z.string(),
+    action: z.string(),
+    targetId: z.string().uuid().nullable(),
+    targetName: z.string().nullable(),
+    timestamp: z.string().datetime(),
+  })
+  .openapi("AuditLogEntry")
+
+export const responses = {
+  401: {
+    content: { "application/json": { schema: ErrorSchema } },
+    description: "Missing or invalid session token",
+  },
+  403: {
+    content: { "application/json": { schema: ErrorSchema } },
+    description: "Authenticated but insufficient permissions",
+  },
+  404: {
+    content: { "application/json": { schema: ErrorSchema } },
+    description: "Resource not found",
+  },
+  422: {
+    content: { "application/json": { schema: ErrorSchema } },
+    description: "Validation error",
+  },
+} as const

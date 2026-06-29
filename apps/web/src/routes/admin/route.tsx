@@ -5,9 +5,10 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
-import { cn } from "@workspace/ui/lib/utils"
+import { Button } from "@/components/button"
+import { cn } from "@/lib/utils"
 import {
   RiHeartPulseLine,
   RiGroupLine,
@@ -51,12 +52,15 @@ function AdminLayout() {
   const { data: sessionData, isPending } = useSession()
   const user = getAppUser(sessionData)
 
-  if (isPending) return null
+  useEffect(() => {
+    if (isPending) return
+    if (!user || user.role !== "admin") {
+      void navigate({ to: "/" })
+    }
+  }, [sessionData, isPending, navigate, user])
 
-  if (!user || user.role !== "admin") {
-    void navigate({ to: "/" })
-    return null
-  }
+  if (isPending) return null
+  if (!user || user.role !== "admin") return null
 
   function handleSignOut() {
     void authClient.signOut().then(() => {
@@ -98,7 +102,7 @@ function AdminLayout() {
           })}
         </nav>
         <div className="border-t border-border p-3">
-          <p className="mb-2 truncate px-2 text-xs text-muted-foreground">
+          <p className="mb-2 truncate px-2 text-sm text-muted-foreground">
             {displayName}
           </p>
           <Button

@@ -1,15 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
+import { Button } from "@/components/button"
+import { Input } from "@/components/input"
+import { Label } from "@/components/label"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@workspace/ui/components/card"
+} from "@/components/card"
 import { RiGoogleLine, RiMailLine, RiFingerprint2Line } from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 
@@ -18,6 +18,24 @@ export const Route = createFileRoute("/login")({
 })
 
 type Mode = "options" | "magic-link-sent"
+
+function AppHeader() {
+  return (
+    <div className="mb-8 flex flex-col items-center gap-2 text-center">
+      <div className="flex size-28 items-center justify-center rounded-full">
+        <img
+          src="/logo.png"
+          alt="Silhouette of a pregnant patient"
+          className="rounded-full"
+        />
+      </div>
+      <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
+      <p className="text-sm text-muted-foreground">
+        Maternal Health Monitoring
+      </p>
+    </div>
+  )
+}
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -73,35 +91,27 @@ function LoginPage() {
     }
   }
 
-  if (mode === "magic-link-sent") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-        <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <div className="flex size-28 items-center justify-center rounded-full">
-            <img
-              src="/logo.png"
-              alt="Silhouette of a pregnant patient"
-              className="rounded-full"
-            />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
-        </div>
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-start bg-background px-6 pt-[12vh] pb-12">
+      <AppHeader />
+
+      {mode === "magic-link-sent" ? (
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle>Check your email</CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base">
               We sent a sign-in link to{" "}
               <span className="font-medium text-foreground">{email}</span>.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Click the link in the email to sign in. The link expires in 5
+            <p className="text-base text-muted-foreground">
+              Click the link in the email to sign in. The link expires in 10
               minutes.
             </p>
             <button
               type="button"
-              className="mt-4 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              className="mt-4 text-base text-muted-foreground underline underline-offset-2 hover:text-foreground"
               onClick={() => {
                 setMode("options")
                 setEmail("")
@@ -111,103 +121,76 @@ function LoginPage() {
             </button>
           </CardContent>
         </Card>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-      <div className="mb-8 flex flex-col items-center gap-2 text-center">
-        <div className="flex size-28 items-center justify-center rounded-full">
-          <img
-            src="/logo.png"
-            alt="Silhouette of a pregnant patient"
-            className=""
-          />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
-        <p className="text-sm text-muted-foreground">
-          Maternal Health Monitoring
-        </p>
-      </div>
-
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Choose how you'd like to sign in.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => void handleGoogle()}
-            disabled={loadingAction !== null}
-          >
-            <RiGoogleLine className="size-4" />
-            {loadingAction === "google"
-              ? "Redirecting…"
-              : "Continue with Google"}
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs text-muted-foreground">
-              <span className="bg-card px-2">or</span>
-            </div>
-          </div>
-
-          <form
-            onSubmit={(e) => void handleMagicLink(e)}
-            className="flex flex-col gap-3"
-          >
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-                autoComplete="email"
-              />
-              {emailError && (
-                <p className="text-xs text-destructive">{emailError}</p>
-              )}
-            </div>
+      ) : (
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle>Sign in</CardTitle>
+            <CardDescription className="text-base">
+              Choose how you'd like to sign in.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             <Button
-              type="submit"
-              variant="outline"
               className="w-full gap-2"
+              onClick={() => void handleGoogle()}
               disabled={loadingAction !== null}
             >
-              <RiMailLine className="size-4" />
-              {loadingAction === "magic" ? "Sending…" : "Send magic link"}
+              <RiGoogleLine className="size-4" />
+              {loadingAction === "google"
+                ? "Redirecting…"
+                : "Continue with Google"}
             </Button>
-          </form>
 
-          <Button
-            variant="ghost"
-            className="w-full gap-2 text-muted-foreground"
-            onClick={() => void handlePasskey()}
-            disabled={loadingAction !== null}
-          >
-            <RiFingerprint2Line className="size-4" />
-            {loadingAction === "passkey" ? "Verifying…" : "Use passkey"}
-          </Button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs text-muted-foreground">
+                <span className="bg-card px-2">or</span>
+              </div>
+            </div>
 
-          <div className="pt-1 text-center">
-            <a
-              href="/signup"
-              className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            <form
+              onSubmit={(e) => void handleMagicLink(e)}
+              className="flex flex-col gap-3"
             >
-              Don't have an account? Sign up
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
+                {emailError && (
+                  <p className="text-xs text-destructive">{emailError}</p>
+                )}
+              </div>
+              <Button
+                type="submit"
+                className="w-full gap-2"
+                disabled={loadingAction !== null}
+              >
+                <RiMailLine className="size-4" />
+                {loadingAction === "magic" ? "Sending…" : "Send magic link"}
+              </Button>
+            </form>
+
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-muted-foreground"
+              onClick={() => void handlePasskey()}
+              disabled={loadingAction !== null}
+            >
+              <RiFingerprint2Line className="size-4" />
+              {loadingAction === "passkey" ? "Verifying…" : "Use passkey"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -16,7 +16,7 @@ import { Route as PatientRouteRouteImport } from './routes/patient/route'
 import { Route as DoctorRouteRouteImport } from './routes/doctor/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SignupIndexRouteImport } from './routes/signup/index'
+import { Route as SignupSelectRoleRouteImport } from './routes/signup/select-role'
 import { Route as SignupPatientRouteImport } from './routes/signup/patient'
 import { Route as SignupDoctorRouteImport } from './routes/signup/doctor'
 import { Route as PatientLoginRouteImport } from './routes/patient/login'
@@ -81,9 +81,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignupIndexRoute = SignupIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const SignupSelectRoleRoute = SignupSelectRoleRouteImport.update({
+  id: '/select-role',
+  path: '/select-role',
   getParentRoute: () => SignupRoute,
 } as any)
 const SignupPatientRoute = SignupPatientRouteImport.update({
@@ -258,7 +258,7 @@ export interface FileRoutesByFullPath {
   '/patient/login': typeof PatientLoginRoute
   '/signup/doctor': typeof SignupDoctorRouteWithChildren
   '/signup/patient': typeof SignupPatientRoute
-  '/signup/': typeof SignupIndexRoute
+  '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/onboarding/doctor/affiliations': typeof OnboardingDoctorAffiliationsRoute
   '/onboarding/doctor/pending': typeof OnboardingDoctorPendingRoute
@@ -274,6 +274,7 @@ export interface FileRoutesByTo {
   '/patient': typeof PatientRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -294,7 +295,7 @@ export interface FileRoutesByTo {
   '/patient/log': typeof PatientLogRoute
   '/patient/login': typeof PatientLoginRoute
   '/signup/patient': typeof SignupPatientRoute
-  '/signup': typeof SignupIndexRoute
+  '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/onboarding/doctor/affiliations': typeof OnboardingDoctorAffiliationsRoute
   '/onboarding/doctor/pending': typeof OnboardingDoctorPendingRoute
@@ -333,7 +334,7 @@ export interface FileRoutesById {
   '/patient/login': typeof PatientLoginRoute
   '/signup/doctor': typeof SignupDoctorRouteWithChildren
   '/signup/patient': typeof SignupPatientRoute
-  '/signup/': typeof SignupIndexRoute
+  '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/onboarding/doctor/affiliations': typeof OnboardingDoctorAffiliationsRoute
   '/onboarding/doctor/pending': typeof OnboardingDoctorPendingRoute
@@ -373,7 +374,7 @@ export interface FileRouteTypes {
     | '/patient/login'
     | '/signup/doctor'
     | '/signup/patient'
-    | '/signup/'
+    | '/signup/select-role'
     | '/doctor/patients/$id'
     | '/onboarding/doctor/affiliations'
     | '/onboarding/doctor/pending'
@@ -389,6 +390,7 @@ export interface FileRouteTypes {
     | '/patient'
     | '/auth'
     | '/login'
+    | '/signup'
     | '/admin/audit'
     | '/admin/audit-log'
     | '/admin/dashboard'
@@ -409,7 +411,7 @@ export interface FileRouteTypes {
     | '/patient/log'
     | '/patient/login'
     | '/signup/patient'
-    | '/signup'
+    | '/signup/select-role'
     | '/doctor/patients/$id'
     | '/onboarding/doctor/affiliations'
     | '/onboarding/doctor/pending'
@@ -447,7 +449,7 @@ export interface FileRouteTypes {
     | '/patient/login'
     | '/signup/doctor'
     | '/signup/patient'
-    | '/signup/'
+    | '/signup/select-role'
     | '/doctor/patients/$id'
     | '/onboarding/doctor/affiliations'
     | '/onboarding/doctor/pending'
@@ -522,11 +524,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/signup/': {
-      id: '/signup/'
-      path: '/'
-      fullPath: '/signup/'
-      preLoaderRoute: typeof SignupIndexRouteImport
+    '/signup/select-role': {
+      id: '/signup/select-role'
+      path: '/select-role'
+      fullPath: '/signup/select-role'
+      preLoaderRoute: typeof SignupSelectRoleRouteImport
       parentRoute: typeof SignupRoute
     }
     '/signup/patient': {
@@ -823,13 +825,13 @@ const SignupDoctorRouteWithChildren = SignupDoctorRoute._addFileChildren(
 interface SignupRouteChildren {
   SignupDoctorRoute: typeof SignupDoctorRouteWithChildren
   SignupPatientRoute: typeof SignupPatientRoute
-  SignupIndexRoute: typeof SignupIndexRoute
+  SignupSelectRoleRoute: typeof SignupSelectRoleRoute
 }
 
 const SignupRouteChildren: SignupRouteChildren = {
   SignupDoctorRoute: SignupDoctorRouteWithChildren,
   SignupPatientRoute: SignupPatientRoute,
-  SignupIndexRoute: SignupIndexRoute,
+  SignupSelectRoleRoute: SignupSelectRoleRoute,
 }
 
 const SignupRouteWithChildren =

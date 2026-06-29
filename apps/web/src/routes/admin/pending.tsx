@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@/components/button"
 import {
   Table,
   TableBody,
@@ -9,14 +9,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@workspace/ui/components/table"
+} from "@/components/table"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@workspace/ui/components/dialog"
+} from "@/components/dialog"
 import { apiClient } from "@/lib/api-client"
 import type { components } from "@/lib/api.types"
 

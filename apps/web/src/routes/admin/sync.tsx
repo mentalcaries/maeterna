@@ -1,12 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Button } from "@/components/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import { RiRefreshLine } from "@remixicon/react"
 import { apiClient } from "@/lib/api-client"
 

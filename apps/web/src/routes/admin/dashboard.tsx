@@ -1,11 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useQueries } from "@tanstack/react-query"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import {
   RiGroupLine,
   RiStethoscopeLine,

@@ -1,12 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import { apiClient } from "@/lib/api-client"
 import { ReadingForm } from "@/components/readings/ReadingForm"
 import type { ReadingBody } from "@/components/readings/ReadingForm"

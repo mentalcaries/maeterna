@@ -10,7 +10,7 @@ export type AppUser = {
   id: string
   email: string
   name: string
-  role: "patient" | "doctor" | "admin"
+  role: "patient" | "doctor" | "admin" | null
   firstName?: string | null
   lastName?: string | null
   status?: "active" | "suspended" | "pending_verification" | null
