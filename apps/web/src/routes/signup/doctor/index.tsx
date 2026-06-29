@@ -157,7 +157,7 @@ function DoctorSignupPage() {
             </p>
             <button
               type="button"
-              className="mt-4 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              className="mt-4 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
               onClick={() => {
                 setMode("auth")
                 setEmail("")

@@ -7,7 +7,7 @@
     "dev": "vp dev --port 3000",
     "build": "vp build",
     "preview": "vp preview",
-    "lint": "eslint",
+    "lint": "vp check",
     "format": "vp fmt \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
@@ -30,12 +30,10 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@tanstack/eslint-config": "latest",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
-    "eslint": "^9",
     "openapi-typescript": "^7.13.0",
     "typescript": "^6",
     "vite": "catalog:",

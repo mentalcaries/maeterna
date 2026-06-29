@@ -23,8 +23,7 @@ import {
   RiFingerprint2Line,
   RiCalendarLine,
 } from "@remixicon/react"
-import { authClient } from "@/lib/auth-client"
-import { getAppUser } from "@/lib/auth-client"
+import { authClient, getAppUser } from "@/lib/auth-client"
 import { useSession } from "@/lib/session"
 import { apiClient } from "@/lib/api-client"
 
@@ -157,7 +156,7 @@ function PatientSignupPage() {
             </p>
             <button
               type="button"
-              className="mt-4 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              className="mt-4 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
               onClick={() => {
                 setMode("auth")
                 setEmail("")
