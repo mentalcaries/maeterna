@@ -5,9 +5,9 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router"
-import { useEffect } from "react"
-import { getSession, clearSession } from "@/mock/auth"
+import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   RiHeartPulseLine,
   RiGroupLine,
@@ -15,51 +15,68 @@ import {
   RiFileListLine,
   RiLogoutBoxLine,
   RiDashboardLine,
+  RiTimeLine,
+  RiRefreshLine,
 } from "@remixicon/react"
-import { cn } from "@workspace/ui/lib/utils"
+import { useSession } from "@/lib/session"
+import { getAppUser, authClient } from "@/lib/auth-client"
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout })
 
 const NAV = [
-  { to: "/admin/dashboard" as const, icon: RiDashboardLine, label: "Overview" },
+  {
+    to: "/admin/dashboard" as const,
+    icon: RiDashboardLine,
+    label: "Dashboard",
+  },
   { to: "/admin/users" as const, icon: RiGroupLine, label: "Users" },
+  {
+    to: "/admin/pending" as const,
+    icon: RiTimeLine,
+    label: "Pending Approvals",
+  },
   { to: "/admin/invite" as const, icon: RiUserAddLine, label: "Invite" },
-  { to: "/admin/audit" as const, icon: RiFileListLine, label: "Audit log" },
+  {
+    to: "/admin/audit-log" as const,
+    icon: RiFileListLine,
+    label: "Audit Log",
+  },
+  { to: "/admin/sync" as const, icon: RiRefreshLine, label: "MBTT Sync" },
 ]
 
 function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const session = getSession()
+  const queryClient = useQueryClient()
+  const { data: sessionData, isPending } = useSession()
+  const user = getAppUser(sessionData)
 
-  const isLoginPage = location.pathname === "/admin/login"
+  if (isPending) return null
 
-  useEffect(() => {
-    if (!isLoginPage) {
-      const s = getSession()
-      if (!s || s.role !== "admin") {
-        void navigate({ to: "/admin/login" })
-      }
-    }
-  }, [navigate, isLoginPage])
-
-  if (isLoginPage) return <Outlet />
-
-  if (!session || session.role !== "admin") return null
-
-  function handleLogout() {
-    clearSession()
-    void navigate({ to: "/admin/login" })
+  if (!user || user.role !== "admin") {
+    void navigate({ to: "/" })
+    return null
   }
+
+  function handleSignOut() {
+    void authClient.signOut().then(() => {
+      queryClient.removeQueries({ queryKey: ["session"] })
+      void navigate({ to: "/login" })
+    })
+  }
+
+  const displayName = user.firstName
+    ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
+    : user.name
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-52 flex-col border-r border-border bg-card lg:flex">
+      <aside className="hidden w-56 flex-col border-r border-border bg-card lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
           <RiHeartPulseLine className="size-4 text-primary" />
           <span className="text-sm font-semibold">Maeterna Admin</span>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-2 pt-3">
+        <nav className="flex flex-1 flex-col gap-0.5 p-2 pt-3">
           {NAV.map(({ to, icon: Icon, label }) => {
             const active =
               location.pathname === to || location.pathname.startsWith(to + "/")
@@ -68,24 +85,27 @@ function AdminLayout() {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center gap-2 rounded-none px-3 py-2 text-xs font-semibold tracking-wider uppercase transition-colors",
+                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
                   active
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/10 font-medium text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Icon className="size-4" />
+                <Icon className="size-4 shrink-0" />
                 {label}
               </Link>
             )
           })}
         </nav>
         <div className="border-t border-border p-3">
+          <p className="mb-2 truncate px-2 text-xs text-muted-foreground">
+            {displayName}
+          </p>
           <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start"
-            onClick={handleLogout}
+            onClick={handleSignOut}
           >
             <RiLogoutBoxLine className="mr-2 size-4" />
             Sign out
@@ -99,7 +119,7 @@ function AdminLayout() {
             <RiHeartPulseLine className="size-4 text-primary" />
             <span className="text-sm font-semibold">Maeterna Admin</span>
           </div>
-          <Button variant="ghost" size="icon-sm" onClick={handleLogout}>
+          <Button variant="ghost" size="icon-sm" onClick={handleSignOut}>
             <RiLogoutBoxLine />
           </Button>
         </header>
@@ -111,8 +131,8 @@ function AdminLayout() {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-none px-3 py-1.5 text-xs font-semibold tracking-wider uppercase",
-                  active ? "text-primary" : "text-muted-foreground"
+                  "flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs",
+                  active ? "font-medium text-primary" : "text-muted-foreground"
                 )}
               >
                 <Icon className="size-3.5" />
@@ -121,7 +141,6 @@ function AdminLayout() {
             )
           })}
         </div>
-
         <main className="flex-1 p-6">
           <Outlet />
         </main>

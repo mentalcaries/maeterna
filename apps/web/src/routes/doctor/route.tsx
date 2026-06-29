@@ -58,10 +58,11 @@ function DoctorLayout() {
   const user = getAppUser(sessionData)
   if (!user || user.role !== "doctor") return null
 
-  async function handleLogout() {
-    await authClient.signOut()
-    void queryClient.invalidateQueries({ queryKey: ["session"] })
-    void navigate({ to: "/" })
+  function handleLogout() {
+    void authClient.signOut().then(() => {
+      queryClient.removeQueries({ queryKey: ["session"] })
+      void navigate({ to: "/login" })
+    })
   }
 
   return (
@@ -94,7 +95,7 @@ function DoctorLayout() {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => void handleLogout()}
+              onClick={handleLogout}
               aria-label="Sign out"
             >
               <RiLogoutBoxLine />

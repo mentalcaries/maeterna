@@ -10,12 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@workspace/ui/components/card"
-import {
-  RiHeartPulseLine,
-  RiGoogleLine,
-  RiMailLine,
-  RiFingerprint2Line,
-} from "@remixicon/react"
+import { RiGoogleLine, RiMailLine, RiFingerprint2Line } from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 
 export const Route = createFileRoute("/login")({
@@ -38,7 +33,7 @@ function LoginPage() {
     setLoadingAction("google")
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      callbackURL: `${import.meta.env.VITE_APP_URL}/auth/callback`,
     })
   }
 
@@ -54,7 +49,7 @@ function LoginPage() {
     try {
       await authClient.signIn.magicLink({
         email: email.trim(),
-        callbackURL: "/",
+        callbackURL: `${import.meta.env.VITE_APP_URL}/auth/callback`,
       })
       setMode("magic-link-sent")
     } catch {
@@ -82,8 +77,12 @@ function LoginPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-            <RiHeartPulseLine className="size-6 text-primary" />
+          <div className="flex size-28 items-center justify-center rounded-full">
+            <img
+              src="/logo.png"
+              alt="Silhouette of a pregnant patient"
+              className="rounded-full"
+            />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
         </div>
@@ -119,8 +118,12 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
       <div className="mb-8 flex flex-col items-center gap-2 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-          <RiHeartPulseLine className="size-6 text-primary" />
+        <div className="flex size-28 items-center justify-center rounded-full">
+          <img
+            src="/logo.png"
+            alt="Silhouette of a pregnant patient"
+            className=""
+          />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
         <p className="text-sm text-muted-foreground">
@@ -194,6 +197,15 @@ function LoginPage() {
             <RiFingerprint2Line className="size-4" />
             {loadingAction === "passkey" ? "Verifying…" : "Use passkey"}
           </Button>
+
+          <div className="pt-1 text-center">
+            <a
+              href="/signup"
+              className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Don't have an account? Sign up
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>

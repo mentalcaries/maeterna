@@ -44,10 +44,11 @@ function PatientLayout() {
 
   const deleteMutation = useMutation({
     mutationFn: () => apiClient.DELETE("/patients/me"),
-    onSuccess: async () => {
-      await authClient.signOut()
-      void queryClient.invalidateQueries({ queryKey: ["session"] })
-      void navigate({ to: "/login" })
+    onSuccess: () => {
+      void authClient.signOut().then(() => {
+        queryClient.removeQueries({ queryKey: ["session"] })
+        void navigate({ to: "/login" })
+      })
     },
   })
 
@@ -65,10 +66,11 @@ function PatientLayout() {
   const user = getAppUser(sessionData)
   if (!user || user.role !== "patient") return null
 
-  async function handleLogout() {
-    await authClient.signOut()
-    void queryClient.invalidateQueries({ queryKey: ["session"] })
-    void navigate({ to: "/" })
+  function handleLogout() {
+    void authClient.signOut().then(() => {
+      queryClient.removeQueries({ queryKey: ["session"] })
+      void navigate({ to: "/login" })
+    })
   }
 
   function handleDeleteAccount() {
@@ -120,7 +122,7 @@ function PatientLayout() {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => void handleLogout()}
+              onClick={handleLogout}
               aria-label="Sign out"
             >
               <RiLogoutBoxLine />
