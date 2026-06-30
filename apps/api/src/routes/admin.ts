@@ -133,7 +133,7 @@ const updateUserStatusRoute = createRoute({
   tags: ["Admin"],
   summary: "Suspend or reactivate a user account",
   request: {
-    params: z.object({ userId: z.string().uuid() }),
+    params: z.object({ userId: z.string().min(1) }),
     body: {
       required: true,
       content: {
@@ -159,7 +159,7 @@ const approveDoctorRoute = createRoute({
   path: "/admin/users/{userId}/approve",
   tags: ["Admin"],
   summary: "Approve a flagged doctor account",
-  request: { params: z.object({ userId: z.string().uuid() }) },
+  request: { params: z.object({ userId: z.string().min(1) }) },
   responses: {
     200: {
       content: { "application/json": { schema: DoctorSchema } },

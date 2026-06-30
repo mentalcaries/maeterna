@@ -256,3 +256,13 @@ export const mbttRegistry = sqliteTable("mbtt_registry", {
   status: text("status").notNull(), // '3' = general registration, '4' = specialist
   syncedAt: text("synced_at").notNull(),
 })
+
+export const userPreferences = sqliteTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  glucoseUnit: text("glucose_unit", { enum: ["mg/dL", "mmol/L"] })
+    .notNull()
+    .default("mg/dL"),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+})

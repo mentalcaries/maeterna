@@ -2,15 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent } from "@/components/card"
 import { Badge } from "@/components/badge"
+import { Button } from "@/components/button"
 import { apiClient } from "@/lib/api-client"
-import { RiAlertLine, RiArrowRightLine } from "@remixicon/react"
+import { RiAlertLine, RiArrowRightLine, RiRefreshLine } from "@remixicon/react"
 
 export const Route = createFileRoute("/doctor/dashboard")({
   component: DoctorDashboardPage,
 })
 
 function DoctorDashboardPage() {
-  const { data: patientList = [], isPending } = useQuery({
+  const {
+    data: patientList = [],
+    isPending,
+    isFetching,
+    refetch,
+  } = useQuery({
     queryKey: ["doctor-patients"],
     queryFn: async () => {
       const res = await apiClient.GET("/doctors/me/patients")
@@ -20,11 +26,22 @@ function DoctorDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">My Patients</h1>
-        <p className="text-sm text-muted-foreground">
-          {isPending ? "Loading…" : `${patientList.length} patients assigned`}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">My Patients</h1>
+          <p className="text-sm text-muted-foreground">
+            {isPending ? "Loading…" : `${patientList.length} patients assigned`}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full border-primary text-primary hover:bg-primary/5 sm:w-auto"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+        >
+          <RiRefreshLine className={isFetching ? "animate-spin" : ""} />
+          Refresh Patient List
+        </Button>
       </div>
 
       {patientList.length === 0 && !isPending ? (

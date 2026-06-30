@@ -45,7 +45,7 @@ const createGrantRoute = createRoute({
         "application/json": {
           schema: z.object({
             grantType: GrantTypeSchema,
-            granteeId: z.string().uuid(),
+            granteeId: z.string().min(1),
           }),
         },
       },

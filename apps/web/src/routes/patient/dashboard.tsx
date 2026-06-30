@@ -44,9 +44,17 @@ function PatientDashboardPage() {
     enabled: !!user,
   })
 
+  const { data: prefsData } = useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => apiClient.GET("/preferences"),
+    enabled: !!user,
+  })
+
   const apiReadings = data?.data?.data ?? []
   const recent = apiReadings.map(adaptReading)
   const alertCount = apiReadings.filter((r) => r.severity !== "normal").length
+  const glucoseUnit =
+    (prefsData?.data?.glucoseUnit as "mg/dL" | "mmol/L" | undefined) ?? "mg/dL"
 
   const hour = new Date().getHours()
   const greeting =
@@ -100,6 +108,7 @@ function PatientDashboardPage() {
         </div>
         <ReadingList
           readings={recent}
+          glucoseUnit={glucoseUnit}
           emptyMessage="No readings logged yet. Log your first reading above."
         />
       </div>

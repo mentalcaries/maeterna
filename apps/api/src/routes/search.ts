@@ -28,7 +28,7 @@ const searchDoctorsRoute = createRoute({
         "application/json": {
           schema: z.array(
             z.object({
-              doctorId: z.string().uuid(),
+              doctorId: z.string(),
               doctorName: z.string(),
               affiliations: z.array(DoctorAffiliationSchema),
             })

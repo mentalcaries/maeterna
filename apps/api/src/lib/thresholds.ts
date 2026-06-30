@@ -1,8 +1,8 @@
 export const DEFAULT_THRESHOLDS = {
-  fastingGlucoseWarning: 5.3,
-  fastingGlucoseCritical: 7.0,
-  postMealGlucoseWarning: 7.8,
-  postMealGlucoseCritical: 11.1,
+  fastingGlucoseWarning: 95,
+  fastingGlucoseCritical: 126,
+  postMealGlucoseWarning: 140,
+  postMealGlucoseCritical: 200,
   systolicWarning: 140,
   systolicCritical: 160,
   diastolicWarning: 90,

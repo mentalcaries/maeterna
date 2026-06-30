@@ -52,9 +52,16 @@ function PatientHistoryPage() {
       }),
   })
 
+  const { data: prefsData } = useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => apiClient.GET("/preferences"),
+  })
+
   const apiReadings = data?.data?.data ?? []
   const total = data?.data?.total ?? 0
   const readings = apiReadings.map(adaptReading)
+  const glucoseUnit =
+    (prefsData?.data?.glucoseUnit as "mg/dL" | "mmol/L" | undefined) ?? "mg/dL"
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -96,6 +103,7 @@ function PatientHistoryPage() {
 
       <ReadingList
         readings={readings}
+        glucoseUnit={glucoseUnit}
         emptyMessage="No readings match your filter."
       />
     </div>

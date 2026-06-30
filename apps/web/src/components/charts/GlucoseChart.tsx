@@ -11,17 +11,23 @@ import {
 import type { Reading } from "@/mock/db"
 import { DEFAULT_THRESHOLDS, getEffectiveThresholds } from "@/lib/thresholds"
 import type { Thresholds } from "@/lib/thresholds"
+import { mgdlToMmol } from "@/lib/glucose"
 
 interface GlucoseChartProps {
   readings: Reading[]
   thresholdOverrides?: Partial<Thresholds>
+  displayUnit?: "mg/dL" | "mmol/L"
 }
 
 export function GlucoseChart({
   readings,
   thresholdOverrides,
+  displayUnit = "mg/dL",
 }: GlucoseChartProps) {
   const thresholds = getEffectiveThresholds(thresholdOverrides)
+
+  const convertValue = (v: number) =>
+    displayUnit === "mmol/L" ? mgdlToMmol(v) : v
 
   const data = readings
     .filter((r) => r.type === "glucose")
@@ -34,7 +40,7 @@ export function GlucoseChart({
         month: "short",
         day: "numeric",
       }),
-      value: r.value1,
+      value: convertValue(r.value1),
       context: r.context,
     }))
 
@@ -61,11 +67,11 @@ export function GlucoseChart({
           tick={{ fontSize: 11 }}
           tickLine={false}
           axisLine={false}
-          unit=" mmol/L"
+          unit={displayUnit === "mmol/L" ? " mmol/L" : " mg/dL"}
           width={72}
         />
         <Tooltip
-          formatter={(value: number) => [`${value} mmol/L`, "Glucose"]}
+          formatter={(value: number) => [`${value} ${displayUnit}`, "Glucose"]}
           contentStyle={{
             border: "1px solid var(--border)",
             borderRadius: "6px",
@@ -73,13 +79,13 @@ export function GlucoseChart({
           }}
         />
         <ReferenceLine
-          y={DEFAULT_THRESHOLDS.fasting_glucose_warning}
+          y={convertValue(DEFAULT_THRESHOLDS.fasting_glucose_warning)}
           stroke="#eab308"
           strokeDasharray="4 4"
           label={{ value: "warn", fill: "#eab308", fontSize: 10 }}
         />
         <ReferenceLine
-          y={thresholds.fasting_glucose_critical}
+          y={convertValue(thresholds.fasting_glucose_critical)}
           stroke="#ef4444"
           strokeDasharray="4 4"
           label={{ value: "crit", fill: "#ef4444", fontSize: 10 }}

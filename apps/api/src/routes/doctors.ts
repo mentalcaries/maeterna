@@ -169,7 +169,7 @@ const getPatientDetailRoute = createRoute({
   path: "/doctors/me/patients/{patientId}",
   tags: ["Doctors"],
   summary: "Get a patient's full detail",
-  request: { params: z.object({ patientId: z.string().uuid() }) },
+  request: { params: z.object({ patientId: z.string().min(1) }) },
   responses: {
     200: {
       content: {
@@ -192,7 +192,7 @@ const getThresholdsRoute = createRoute({
   path: "/doctors/me/patients/{patientId}/thresholds",
   tags: ["Doctors"],
   summary: "Get thresholds for a patient",
-  request: { params: z.object({ patientId: z.string().uuid() }) },
+  request: { params: z.object({ patientId: z.string().min(1) }) },
   responses: {
     200: {
       content: {
@@ -215,7 +215,7 @@ const setThresholdsRoute = createRoute({
   tags: ["Doctors"],
   summary: "Set custom alert thresholds for a patient",
   request: {
-    params: z.object({ patientId: z.string().uuid() }),
+    params: z.object({ patientId: z.string().min(1) }),
     body: {
       required: true,
       content: { "application/json": { schema: ThresholdsSchema } },

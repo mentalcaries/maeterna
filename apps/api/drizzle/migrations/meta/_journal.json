@@ -29,6 +29,13 @@
       "when": 1782740144557,
       "tag": "0003_stiff_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1782828383265,
+      "tag": "0004_left_kinsey_walden",
+      "breakpoints": true
     }
   ]
 }

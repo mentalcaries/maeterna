@@ -1,8 +1,10 @@
-import { ReadingBadge } from "@/components/readings/ReadingBadge"
+import { cn } from "@/lib/utils"
+import { formatGlucose } from "@/lib/glucose"
 import type { Reading } from "@/mock/db"
 
 interface ReadingListProps {
   readings: Reading[]
+  glucoseUnit?: "mg/dL" | "mmol/L"
   emptyMessage?: string
 }
 
@@ -56,6 +58,7 @@ function readingSubtitle(r: Reading): string {
 
 export function ReadingList({
   readings,
+  glucoseUnit = "mg/dL",
   emptyMessage = "No readings yet.",
 }: ReadingListProps) {
   if (readings.length === 0) {
@@ -72,7 +75,7 @@ export function ReadingList({
         const valueStr =
           r.type === "blood_pressure"
             ? `${r.value1}/${r.value2 ?? "?"} mmHg`
-            : `${r.value1} mmol/L`
+            : formatGlucose(r.value1, glucoseUnit)
 
         return (
           <div key={r.id} className="flex flex-col gap-1 p-4">
@@ -83,7 +86,14 @@ export function ReadingList({
                   {readingSubtitle(r)}
                 </p>
               </div>
-              <ReadingBadge severity={r.severity} />
+              <span
+                className={cn(
+                  "mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full",
+                  !r.severity && "bg-green-500",
+                  r.severity === "warning" && "bg-amber-400",
+                  r.severity === "critical" && "bg-red-500"
+                )}
+              />
             </div>
             {r.notes && (
               <p className="text-xs text-muted-foreground italic">{r.notes}</p>

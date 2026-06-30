@@ -13,6 +13,7 @@ import { registerInstitutionRoutes } from "./routes/institutions"
 import { registerDoctorRoutes } from "./routes/doctors"
 import { registerInviteRoutes } from "./routes/invites"
 import { registerAdminRoutes } from "./routes/admin"
+import { registerPreferencesRoutes } from "./routes/preferences"
 import type { AppEnv } from "./types"
 import type { AppStatus } from "./lib/errors"
 
@@ -51,6 +52,7 @@ registerInstitutionRoutes(app)
 registerDoctorRoutes(app)
 registerInviteRoutes(app)
 registerAdminRoutes(app)
+registerPreferencesRoutes(app)
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {

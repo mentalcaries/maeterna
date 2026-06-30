@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import * as XLSX from "xlsx"
 import { jsPDF } from "jspdf"
@@ -42,6 +42,8 @@ import {
 } from "@remixicon/react"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
 import type { Thresholds, AlertSeverity } from "@/lib/thresholds"
+import { formatGlucose } from "@/lib/glucose"
+import { cn } from "@/lib/utils"
 import type { Reading } from "@/mock/db"
 
 export const Route = createFileRoute("/doctor/patients/$id")({
@@ -143,6 +145,18 @@ function PatientDetailPage() {
   const [logOpen, setLogOpen] = useState(false)
   const [thresholdOpen, setThresholdOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [displayUnit, setDisplayUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
+
+  const { data: prefsData } = useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => apiClient.GET("/preferences"),
+  })
+
+  useEffect(() => {
+    if (prefsData?.data?.glucoseUnit) {
+      setDisplayUnit(prefsData.data.glucoseUnit as "mg/dL" | "mmol/L")
+    }
+  }, [prefsData])
 
   const { data: patientDetail, isPending } = useQuery({
     queryKey: ["patient", patientId],
@@ -290,7 +304,7 @@ function PatientDetailPage() {
           r.type === "blood_pressure"
             ? `${r.value1}/${r.value2 ?? "?"}`
             : String(r.value1),
-        Unit: r.unit,
+        Unit: r.type === "blood_pressure" ? "mmHg" : displayUnit,
         Context: readingContext(r),
         Notes: r.notes ?? "",
         Status: r.severity ?? "Normal",
@@ -379,7 +393,7 @@ function PatientDetailPage() {
         r.type === "blood_pressure"
           ? `${r.value1}/${r.value2 ?? "?"}`
           : String(r.value1),
-        r.unit,
+        r.type === "blood_pressure" ? "mmHg" : displayUnit,
         readingContext(r),
         r.notes ?? "",
         r.severity ?? "Normal",
@@ -477,10 +491,39 @@ function PatientDetailPage() {
 
       <Tabs defaultValue="glucose">
         <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="glucose">Glucose</TabsTrigger>
-            <TabsTrigger value="bp">Blood Pressure</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-3">
+            <TabsList className="h-auto gap-0.5 rounded-md border border-border bg-transparent p-0.5">
+              <TabsTrigger
+                value="glucose"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+              >
+                Glucose
+              </TabsTrigger>
+              <TabsTrigger
+                value="bp"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+              >
+                Blood Pressure
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+              {(["mg/dL", "mmol/L"] as const).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setDisplayUnit(u)}
+                  className={cn(
+                    "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                    displayUnit === u
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button
             variant="outline"
             size="xs"
@@ -519,6 +562,7 @@ function PatientDetailPage() {
               <GlucoseChart
                 readings={allReadings}
                 thresholdOverrides={localThresholds}
+                displayUnit={displayUnit}
               />
             </CardContent>
           </Card>
@@ -569,9 +613,8 @@ function PatientDetailPage() {
                 const d = new Date(r.timestamp)
                 const valueStr =
                   r.type === "blood_pressure"
-                    ? `${r.value1}/${r.value2 ?? "?"}`
-                    : `${r.value1}`
-                const unitStr = r.type === "blood_pressure" ? "mmHg" : "mmol/L"
+                    ? `${r.value1}/${r.value2 ?? "?"} mmHg`
+                    : formatGlucose(r.value1, displayUnit)
                 const severity =
                   r.severity === "normal"
                     ? undefined
@@ -592,8 +635,7 @@ function PatientDetailPage() {
                         : "Glucose"}
                     </TableCell>
                     <TableCell className="text-xs font-medium">
-                      {valueStr}{" "}
-                      <span className="text-muted-foreground">{unitStr}</span>
+                      {valueStr}
                     </TableCell>
                     <TableCell className="text-xs">
                       {readingContext(r)}
@@ -651,10 +693,10 @@ function PatientDetailPage() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             {(
               [
-                ["Fasting glucose warn (mmol/L)", "fasting_glucose_warning"],
-                ["Fasting glucose crit (mmol/L)", "fasting_glucose_critical"],
-                ["Post-meal warn (mmol/L)", "postmeal_glucose_warning"],
-                ["Post-meal crit (mmol/L)", "postmeal_glucose_critical"],
+                ["Fasting glucose warn (mg/dL)", "fasting_glucose_warning"],
+                ["Fasting glucose crit (mg/dL)", "fasting_glucose_critical"],
+                ["Post-meal warn (mg/dL)", "postmeal_glucose_warning"],
+                ["Post-meal crit (mg/dL)", "postmeal_glucose_critical"],
                 ["Systolic warn (mmHg)", "systolic_warning"],
                 ["Systolic crit (mmHg)", "systolic_critical"],
                 ["Diastolic warn (mmHg)", "diastolic_warning"],

@@ -16,6 +16,7 @@ import {
 import { RiCalendarLine, RiShieldLine } from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/patient/settings")({
   component: PatientSettingsPage,
@@ -48,6 +49,25 @@ function PatientSettingsPage() {
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState("")
+  const [unitSuccess, setUnitSuccess] = useState(false)
+
+  const { data: prefsData } = useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => apiClient.GET("/preferences"),
+  })
+
+  const glucoseUnit =
+    (prefsData?.data?.glucoseUnit as "mg/dL" | "mmol/L" | undefined) ?? "mg/dL"
+
+  const unitMutation = useMutation({
+    mutationFn: (unit: "mg/dL" | "mmol/L") =>
+      apiClient.PATCH("/preferences", { body: { glucoseUnit: unit } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["preferences"] })
+      setUnitSuccess(true)
+      setTimeout(() => setUnitSuccess(false), 2000)
+    },
+  })
 
   useEffect(() => {
     if (profile && !initialized) {
@@ -267,6 +287,38 @@ function PatientSettingsPage() {
             <RiShieldLine className="size-4" />
             Manage access
           </Link>
+        </CardContent>
+      </Card>
+
+      {/* Units */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Units</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-base text-muted-foreground">Blood glucose unit</p>
+          <div className="flex gap-2">
+            {(["mg/dL", "mmol/L"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => unitMutation.mutate(u)}
+                className={cn(
+                  "rounded-md border-2 px-4 py-2 text-sm font-medium transition-colors",
+                  glucoseUnit === u
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border text-muted-foreground hover:border-muted-foreground/40"
+                )}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+          {unitSuccess && (
+            <p className="text-sm text-green-600 dark:text-green-400">
+              Preference saved.
+            </p>
+          )}
         </CardContent>
       </Card>
 

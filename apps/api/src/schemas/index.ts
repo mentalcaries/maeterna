@@ -150,6 +150,12 @@ export const InviteSchema = z
   })
   .openapi("Invite")
 
+export const UserPreferencesSchema = z
+  .object({
+    glucoseUnit: z.enum(["mg/dL", "mmol/L"]),
+  })
+  .openapi("UserPreferences")
+
 export const AuditLogEntrySchema = z
   .object({
     id: z.string().uuid(),

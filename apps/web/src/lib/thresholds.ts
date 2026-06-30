@@ -12,10 +12,10 @@ export interface Thresholds {
 }
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  fasting_glucose_warning: 5.3,
-  fasting_glucose_critical: 7.0,
-  postmeal_glucose_warning: 7.8,
-  postmeal_glucose_critical: 11.1,
+  fasting_glucose_warning: 95,
+  fasting_glucose_critical: 126,
+  postmeal_glucose_warning: 140,
+  postmeal_glucose_critical: 200,
   systolic_warning: 140,
   systolic_critical: 160,
   diastolic_warning: 90,

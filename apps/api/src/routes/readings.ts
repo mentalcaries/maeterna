@@ -11,6 +11,12 @@ import type { DB } from "../db"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const MMOL_TO_MGDL = 18.0182
+
+function toMgDl(value: number, unit: string): number {
+  return unit === "mmol/L" ? Math.round(value * MMOL_TO_MGDL * 10) / 10 : value
+}
+
 async function doctorHasAccess(
   db: DB,
   doctorId: string,
@@ -72,6 +78,7 @@ const readingBodySchema = z.object({
   type: ReadingTypeSchema,
   value1: z.number(),
   value2: z.number().nullable().optional(),
+  unit: z.enum(["mg/dL", "mmol/L", "mmHg"]),
   context: z.string(),
   notes: z.string().nullable().optional(),
   timestamp: z.string().datetime(),
@@ -128,7 +135,7 @@ const logReadingForPatientRoute = createRoute({
   tags: ["Readings"],
   summary: "Log a reading on behalf of a patient (doctor)",
   request: {
-    params: z.object({ patientId: z.string().uuid() }),
+    params: z.object({ patientId: z.string().min(1) }),
     body: {
       required: true,
       content: { "application/json": { schema: readingBodySchema } },
@@ -169,8 +176,10 @@ const addNoteRoute = createRoute({
 export function registerReadingRoutes(app: AppRouter) {
   app.use("/patients/me/readings", sessionMiddleware)
   app.use("/patients/me/readings", requireRole("patient"))
+  // Note: /patients/:patientId/readings intentionally has no requireRole middleware
+  // here because the :patientId pattern also matches /patients/me/readings, which
+  // would incorrectly block patients. The doctor role check is done inline below.
   app.use("/patients/:patientId/readings", sessionMiddleware)
-  app.use("/patients/:patientId/readings", requireRole("doctor"))
   app.use("/readings/:readingId/notes", sessionMiddleware)
   app.use("/readings/:readingId/notes", requireRole("doctor"))
 
@@ -205,14 +214,16 @@ export function registerReadingRoutes(app: AppRouter) {
     if (body.type === "blood_pressure" && body.value2 == null)
       raise(422, "value2 (diastolic) is required for blood_pressure readings")
 
+    const value1 =
+      body.type === "glucose" ? toMgDl(body.value1, body.unit) : body.value1
+    const unit = body.type === "glucose" ? "mg/dL" : "mmHg"
     const severity = computeSeverity(
       body.type,
       body.context,
-      body.value1,
+      value1,
       body.value2,
       DEFAULT_THRESHOLDS
     )
-    const unit = body.type === "glucose" ? "mmol/L" : "mmHg"
     const now = new Date()
 
     const newReading = {
@@ -220,7 +231,7 @@ export function registerReadingRoutes(app: AppRouter) {
       patientId: u.id,
       loggedById: u.id,
       type: body.type,
-      value1: body.value1,
+      value1,
       value2: body.value2 ?? null,
       unit,
       context: body.context,
@@ -237,6 +248,8 @@ export function registerReadingRoutes(app: AppRouter) {
   // POST /patients/{patientId}/readings (doctor)
   app.openapi(logReadingForPatientRoute, async (c) => {
     const doctor = c.get("user")
+    if (!doctor || doctor.role !== "doctor")
+      raise(403, "Only doctors can log readings for patients")
     const { patientId } = c.req.valid("param")
     const body = c.req.valid("json")
     const db = createDb(c.env.DB)
@@ -246,21 +259,23 @@ export function registerReadingRoutes(app: AppRouter) {
     if (body.type === "blood_pressure" && body.value2 == null)
       raise(422, "value2 (diastolic) is required for blood_pressure readings")
 
+    const value1 =
+      body.type === "glucose" ? toMgDl(body.value1, body.unit) : body.value1
+    const unit = body.type === "glucose" ? "mg/dL" : "mmHg"
     const severity = computeSeverity(
       body.type,
       body.context,
-      body.value1,
+      value1,
       body.value2,
       DEFAULT_THRESHOLDS
     )
-    const unit = body.type === "glucose" ? "mmol/L" : "mmHg"
 
     const newReading = {
       id: crypto.randomUUID(),
       patientId,
       loggedById: doctor.id,
       type: body.type,
-      value1: body.value1,
+      value1,
       value2: body.value2 ?? null,
       unit,
       context: body.context,
