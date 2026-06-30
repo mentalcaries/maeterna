@@ -163,6 +163,9 @@ components:
     DoctorAffiliation:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         institutionId:
           type: string
           format: uuid
@@ -529,6 +532,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /profile/doctor/affiliations/{affiliationId}:
+    delete:
+      tags: [Profile]
+      summary: Remove a single doctor affiliation
+      parameters:
+        - name: affiliationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Affiliation deleted
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -942,6 +964,33 @@ paths:
                 $ref: "#/components/schemas/Doctor"
         "401":
           $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Doctors]
+      summary: Update own doctor profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  minLength: 1
+                lastName:
+                  type: string
+                  minLength: 1
+      responses:
+        "200":
+          description: Updated doctor profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Doctor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /doctors/me/patients:
     get:

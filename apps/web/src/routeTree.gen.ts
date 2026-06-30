@@ -26,6 +26,7 @@ import { Route as PatientHistoryRouteImport } from './routes/patient/history'
 import { Route as PatientDashboardRouteImport } from './routes/patient/dashboard'
 import { Route as PatientAccessRouteImport } from './routes/patient/access'
 import { Route as OnboardingPatientRouteImport } from './routes/onboarding/patient'
+import { Route as DoctorSettingsRouteImport } from './routes/doctor/settings'
 import { Route as DoctorPendingRouteImport } from './routes/doctor/pending'
 import { Route as DoctorLoginRouteImport } from './routes/doctor/login'
 import { Route as DoctorDashboardRouteImport } from './routes/doctor/dashboard'
@@ -127,6 +128,11 @@ const OnboardingPatientRoute = OnboardingPatientRouteImport.update({
   id: '/onboarding/patient',
   path: '/onboarding/patient',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DoctorSettingsRoute = DoctorSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DoctorRouteRoute,
 } as any)
 const DoctorPendingRoute = DoctorPendingRouteImport.update({
   id: '/pending',
@@ -230,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
   '/doctor/pending': typeof DoctorPendingRoute
+  '/doctor/settings': typeof DoctorSettingsRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
   '/patient/dashboard': typeof PatientDashboardRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
   '/doctor/pending': typeof DoctorPendingRoute
+  '/doctor/settings': typeof DoctorSettingsRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
   '/patient/dashboard': typeof PatientDashboardRoute
@@ -300,6 +308,7 @@ export interface FileRoutesById {
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
   '/doctor/pending': typeof DoctorPendingRoute
+  '/doctor/settings': typeof DoctorSettingsRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
   '/patient/dashboard': typeof PatientDashboardRoute
@@ -337,6 +346,7 @@ export interface FileRouteTypes {
     | '/doctor/dashboard'
     | '/doctor/login'
     | '/doctor/pending'
+    | '/doctor/settings'
     | '/onboarding/patient'
     | '/patient/access'
     | '/patient/dashboard'
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/doctor/dashboard'
     | '/doctor/login'
     | '/doctor/pending'
+    | '/doctor/settings'
     | '/onboarding/patient'
     | '/patient/access'
     | '/patient/dashboard'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/doctor/dashboard'
     | '/doctor/login'
     | '/doctor/pending'
+    | '/doctor/settings'
     | '/onboarding/patient'
     | '/patient/access'
     | '/patient/dashboard'
@@ -554,6 +566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingPatientRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/doctor/settings': {
+      id: '/doctor/settings'
+      path: '/settings'
+      fullPath: '/doctor/settings'
+      preLoaderRoute: typeof DoctorSettingsRouteImport
+      parentRoute: typeof DoctorRouteRoute
+    }
     '/doctor/pending': {
       id: '/doctor/pending'
       path: '/pending'
@@ -699,6 +718,7 @@ interface DoctorRouteRouteChildren {
   DoctorDashboardRoute: typeof DoctorDashboardRoute
   DoctorLoginRoute: typeof DoctorLoginRoute
   DoctorPendingRoute: typeof DoctorPendingRoute
+  DoctorSettingsRoute: typeof DoctorSettingsRoute
   DoctorPatientsIdRoute: typeof DoctorPatientsIdRoute
 }
 
@@ -706,6 +726,7 @@ const DoctorRouteRouteChildren: DoctorRouteRouteChildren = {
   DoctorDashboardRoute: DoctorDashboardRoute,
   DoctorLoginRoute: DoctorLoginRoute,
   DoctorPendingRoute: DoctorPendingRoute,
+  DoctorSettingsRoute: DoctorSettingsRoute,
   DoctorPatientsIdRoute: DoctorPatientsIdRoute,
 }
 

@@ -11,12 +11,12 @@ import { authClient, getAppUser } from "@/lib/auth-client"
 import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/button"
 import {
-  RiHeartPulseLine,
   RiHistoryLine,
   RiAddLine,
   RiLogoutBoxLine,
   RiShieldLine,
   RiSettings3Line,
+  RiHomeLine,
 } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 
@@ -54,7 +54,7 @@ function PatientLayout() {
   const navItems = [
     {
       to: "/patient/dashboard" as const,
-      icon: RiHeartPulseLine,
+      icon: RiHomeLine,
       label: "Home",
     },
     { to: "/patient/log" as const, icon: RiAddLine, label: "Log" },
@@ -67,7 +67,11 @@ function PatientLayout() {
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-lg items-center justify-between px-4 md:h-16 md:max-w-4xl md:px-6">
           <div className="flex items-center gap-2">
-            <RiHeartPulseLine className="size-5 text-primary" />
+            <img
+              src="/logo.png"
+              alt="Maeterna"
+              className="size-10 rounded-full"
+            />
             <span className="text-sm font-semibold tracking-wide">
               Maeterna
             </span>

@@ -27,6 +27,13 @@ type Affiliation = {
   departmentName: string
 }
 
+function findOGDepartment(inst: components["schemas"]["Institution"]) {
+  return (
+    inst.departments.find((d) => d.name.includes("Obstetrics")) ??
+    inst.departments[0]
+  )
+}
+
 function DoctorAffiliationsPage() {
   const navigate = useNavigate()
   const [instQuery, setInstQuery] = useState("")
@@ -47,37 +54,23 @@ function DoctorAffiliationsPage() {
     onSuccess: () => void navigate({ to: "/doctor/dashboard" }),
   })
 
-  function handleAddAffiliation(
-    inst: components["schemas"]["Institution"],
-    dept: components["schemas"]["Department"]
-  ) {
-    const already = affiliations.some(
-      (a) => a.institutionId === inst.id && a.departmentId === dept.id
-    )
-    if (already) return
-    setAffiliations((prev) => [
-      ...prev,
-      {
-        institutionId: inst.id,
-        institutionName: inst.name,
-        departmentId: dept.id,
-        departmentName: dept.name,
-      },
-    ])
-  }
-
-  function handleRemoveAffiliation(
-    institutionId: string,
-    departmentId: string
-  ) {
-    setAffiliations((prev) =>
-      prev.filter(
-        (a) =>
-          !(
-            a.institutionId === institutionId && a.departmentId === departmentId
-          )
-      )
-    )
+  function handleToggleInstitution(inst: components["schemas"]["Institution"]) {
+    const dept = findOGDepartment(inst)
+    if (!dept) return
+    const isSelected = affiliations.some((a) => a.institutionId === inst.id)
+    if (isSelected) {
+      setAffiliations((prev) => prev.filter((a) => a.institutionId !== inst.id))
+    } else {
+      setAffiliations((prev) => [
+        ...prev,
+        {
+          institutionId: inst.id,
+          institutionName: inst.name,
+          departmentId: dept.id,
+          departmentName: dept.name,
+        },
+      ])
+    }
   }
 
   function handleComplete() {
@@ -90,11 +83,12 @@ function DoctorAffiliationsPage() {
     })
   }
 
+  const hospitals = institutions.filter((i) => i.type === "hospital")
   const filteredInstitutions = instQuery.trim()
-    ? institutions.filter((inst) =>
+    ? hospitals.filter((inst) =>
         inst.name.toLowerCase().includes(instQuery.toLowerCase())
       )
-    : institutions
+    : hospitals
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
@@ -104,15 +98,16 @@ function DoctorAffiliationsPage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
         <p className="text-base text-muted-foreground">
-          Step 2 of 2 — Institution &amp; department
+          Step 2 of 2 — Hospital affiliations (optional)
         </p>
       </div>
 
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Institution &amp; department</CardTitle>
+          <CardTitle>Add hospital affiliations (optional)</CardTitle>
           <CardDescription className="text-base">
-            Add your hospital or practice affiliations. You can add multiple.
+            Add your hospital affiliations. You can update these later in
+            Settings.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -124,15 +119,19 @@ function DoctorAffiliationsPage() {
               <div className="flex flex-wrap gap-2">
                 {affiliations.map((a) => (
                   <Badge
-                    key={`${a.institutionId}-${a.departmentId}`}
+                    key={a.institutionId}
                     variant="secondary"
                     className="flex items-center gap-1 pr-1"
                   >
-                    {a.departmentName} · {a.institutionName}
+                    {a.institutionName}
                     <button
                       type="button"
                       onClick={() =>
-                        handleRemoveAffiliation(a.institutionId, a.departmentId)
+                        setAffiliations((prev) =>
+                          prev.filter(
+                            (x) => x.institutionId !== a.institutionId
+                          )
+                        )
                       }
                       className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
                       aria-label="Remove"
@@ -149,7 +148,7 @@ function DoctorAffiliationsPage() {
           <div className="relative">
             <RiSearchLine className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search institutions…"
+              placeholder="Search hospitals…"
               value={instQuery}
               onChange={(e) => setInstQuery(e.target.value)}
               className="pl-9 text-base"
@@ -159,45 +158,31 @@ function DoctorAffiliationsPage() {
           <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
             {filteredInstitutions.length === 0 ? (
               <p className="text-base text-muted-foreground">
-                No institutions found.
+                No hospitals found.
               </p>
             ) : (
-              filteredInstitutions.map((inst) => (
-                <div
-                  key={inst.id}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <p className="text-base font-medium">{inst.name}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {inst.departments.map((dept) => {
-                      const isSelected = affiliations.some(
-                        (a) =>
-                          a.institutionId === inst.id &&
-                          a.departmentId === dept.id
-                      )
-                      return (
-                        <button
-                          key={dept.id}
-                          type="button"
-                          onClick={() =>
-                            isSelected
-                              ? handleRemoveAffiliation(inst.id, dept.id)
-                              : handleAddAffiliation(inst, dept)
-                          }
-                          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground hover:bg-muted/80"
-                          }`}
-                        >
-                          {isSelected && <RiCheckLine className="size-3" />}
-                          {dept.name}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))
+              filteredInstitutions.map((inst) => {
+                const isSelected = affiliations.some(
+                  (a) => a.institutionId === inst.id
+                )
+                return (
+                  <button
+                    key={inst.id}
+                    type="button"
+                    onClick={() => handleToggleInstitution(inst)}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{inst.name}</p>
+                    {isSelected && (
+                      <RiCheckLine className="size-4 shrink-0 text-primary" />
+                    )}
+                  </button>
+                )
+              })
             )}
           </div>
 
@@ -215,6 +200,13 @@ function DoctorAffiliationsPage() {
             onClick={handleComplete}
           >
             {affiliationsMutation.isPending ? "Saving…" : "Complete setup"}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => void navigate({ to: "/doctor/dashboard" })}
+          >
+            Skip for now
           </Button>
         </CardContent>
       </Card>

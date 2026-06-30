@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   user as userTable,
@@ -88,6 +88,18 @@ const saveAffiliationsRoute = createRoute({
       content: { "application/json": { schema: DoctorSchema } },
       description: "Affiliations saved",
     },
+    ...responses,
+  },
+})
+
+const deleteAffiliationRoute = createRoute({
+  method: "delete",
+  path: "/profile/doctor/affiliations/{affiliationId}",
+  tags: ["Profile"],
+  summary: "Remove a single doctor affiliation",
+  request: { params: z.object({ affiliationId: z.string().uuid() }) },
+  responses: {
+    204: { description: "Affiliation deleted" },
     ...responses,
   },
 })
@@ -377,6 +389,24 @@ export function registerProfileRoutes(app: AppRouter) {
     })
   })
 
+  // DELETE /profile/doctor/affiliations/:affiliationId
+  app.openapi(deleteAffiliationRoute, async (c) => {
+    const currentUser = c.get("user")
+    if (currentUser.role !== "doctor")
+      raise(403, "Only doctors can manage affiliations")
+    const { affiliationId } = c.req.valid("param")
+    const db = createDb(c.env.DB)
+    await db
+      .delete(doctorAffiliation)
+      .where(
+        and(
+          eq(doctorAffiliation.id, affiliationId),
+          eq(doctorAffiliation.doctorId, currentUser.id)
+        )
+      )
+    return new Response(null, { status: 204 }) as never
+  })
+
   // PUT /profile/doctor/affiliations
   app.openapi(saveAffiliationsRoute, async (c) => {
     const currentUser = c.get("user")
@@ -412,6 +442,7 @@ export function registerProfileRoutes(app: AppRouter) {
       .get()
     const affRows = await db
       .select({
+        id: doctorAffiliation.id,
         institutionId: doctorAffiliation.institutionId,
         institutionName: institution.name,
         departmentId: doctorAffiliation.departmentId,

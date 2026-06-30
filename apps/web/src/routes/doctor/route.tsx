@@ -10,11 +10,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "@/lib/session"
 import { authClient, getAppUser } from "@/lib/auth-client"
 import { Button } from "@/components/button"
-import {
-  RiHeartPulseLine,
-  RiGroupLine,
-  RiLogoutBoxLine,
-} from "@remixicon/react"
+import { RiGroupLine, RiLogoutBoxLine, RiSettings3Line } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/doctor")({ component: DoctorLayout })
@@ -65,50 +61,70 @@ function DoctorLayout() {
     })
   }
 
+  const isPatientsActive =
+    location.pathname.startsWith("/doctor/dashboard") ||
+    location.pathname === "/doctor"
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <RiHeartPulseLine className="size-5 text-primary" />
-            <span className="text-sm font-semibold tracking-wide">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:h-16 md:px-6">
+          <Link
+            to="/doctor/dashboard"
+            className="flex items-center gap-2 text-foreground hover:opacity-80"
+          >
+            <img
+              src="/logo.png"
+              alt="Maeterna"
+              className="size-10 rounded-full"
+            />
+            <span className="text-base font-semibold tracking-wide">
               Maeterna
             </span>
-            <span className="hidden text-xs text-muted-foreground sm:inline">
-              Doctor Dashboard
-            </span>
-          </div>
+          </Link>
+
           <nav className="flex items-center gap-1">
             <Link
               to="/doctor/dashboard"
               className={cn(
-                "rounded-none px-3 py-1.5 text-xs font-semibold tracking-wider uppercase transition-colors",
-                location.pathname.startsWith("/doctor/dashboard") ||
-                  location.pathname === "/doctor"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                isPatientsActive
+                  ? "bg-primary/8 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
-              <RiGroupLine className="mr-1 inline size-3.5" />
+              <RiGroupLine className="size-4" />
               Patients
+            </Link>
+            <Link
+              to="/doctor/settings"
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                location.pathname.startsWith("/doctor/settings")
+                  ? "bg-primary/8 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              <RiSettings3Line className="size-4" />
+              Settings
             </Link>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-lg"
               onClick={handleLogout}
               aria-label="Sign out"
             >
-              <RiLogoutBoxLine />
+              <RiLogoutBoxLine className="size-5" />
             </Button>
           </nav>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 md:px-6">
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground">
             Signed in as {user.firstName} {user.lastName ?? ""}
-          </span>
+          </p>
         </div>
         <Outlet />
       </main>

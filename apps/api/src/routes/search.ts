@@ -103,6 +103,7 @@ export function registerSearchRoutes(app: AppRouter) {
       doctors.slice(0, limit).map(async (d) => {
         const affs = await db
           .select({
+            id: doctorAffiliation.id,
             institutionId: doctorAffiliation.institutionId,
             institutionName: institution.name,
             departmentId: doctorAffiliation.departmentId,

@@ -79,6 +79,7 @@ async function buildDoctorResponse(db: DB, userId: string) {
     .get()
   const affs = await db
     .select({
+      id: doctorAffiliation.id,
       institutionId: doctorAffiliation.institutionId,
       institutionName: institution.name,
       departmentId: doctorAffiliation.departmentId,
@@ -224,6 +225,33 @@ const setThresholdsRoute = createRoute({
     200: {
       content: { "application/json": { schema: ThresholdsSchema } },
       description: "Custom thresholds saved",
+    },
+    ...responses,
+  },
+})
+
+const patchMeRoute = createRoute({
+  method: "patch",
+  path: "/doctors/me",
+  tags: ["Doctors"],
+  summary: "Update own doctor profile",
+  request: {
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z.object({
+            firstName: z.string().min(1).optional(),
+            lastName: z.string().min(1).optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: DoctorSchema } },
+      description: "Updated doctor profile",
     },
     ...responses,
   },
@@ -445,6 +473,20 @@ export function registerDoctorRoutes(app: AppRouter) {
     }
 
     return c.json({ thresholds: { ...DEFAULT_THRESHOLDS }, isCustom: false })
+  })
+
+  // PATCH /doctors/me
+  app.openapi(patchMeRoute, async (c) => {
+    const { firstName, lastName } = c.req.valid("json")
+    const db = createDb(c.env.DB)
+    await db
+      .update(userTable)
+      .set({
+        ...(firstName !== undefined && { firstName }),
+        ...(lastName !== undefined && { lastName }),
+      })
+      .where(eq(userTable.id, c.get("user").id))
+    return c.json(await buildDoctorResponse(db, c.get("user").id))
   })
 
   // PUT /doctors/me/patients/{patientId}/thresholds

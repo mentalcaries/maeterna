@@ -268,6 +268,64 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/profile/doctor/affiliations/{affiliationId}": {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** Format: uuid */
+        affiliationId: string
+      }
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Remove a single doctor affiliation */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          /** Format: uuid */
+          affiliationId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Affiliation deleted */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/patients/me": {
     parameters: {
       query?: never
@@ -1290,7 +1348,52 @@ export interface paths {
     delete?: never
     options?: never
     head?: never
-    patch?: never
+    /** Update own doctor profile */
+    patch: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json": {
+            firstName?: string
+            lastName?: string
+          }
+        }
+      }
+      responses: {
+        /** @description Updated doctor profile */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Doctor"]
+          }
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
     trace?: never
   }
   "/doctors/me/patients": {
@@ -2243,6 +2346,8 @@ export interface components {
       verificationFailed: true
     }
     DoctorAffiliation: {
+      /** Format: uuid */
+      id: string
       /** Format: uuid */
       institutionId: string
       institutionName: string

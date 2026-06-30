@@ -37,6 +37,7 @@ export const ThresholdsSchema = z
 
 export const DoctorAffiliationSchema = z
   .object({
+    id: z.string().uuid(),
     institutionId: z.string().uuid(),
     institutionName: z.string(),
     departmentId: z.string().uuid(),

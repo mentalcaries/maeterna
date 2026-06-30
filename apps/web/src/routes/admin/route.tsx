@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/button"
 import { cn } from "@/lib/utils"
 import {
-  RiHeartPulseLine,
   RiGroupLine,
   RiUserAddLine,
   RiFileListLine,
@@ -75,12 +74,16 @@ function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-56 flex-col border-r border-border bg-card lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-56 flex-col border-r border-border bg-card pb-10 lg:flex">
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <RiHeartPulseLine className="size-4 text-primary" />
+          <img
+            src="/logo.png"
+            alt="Maeterna"
+            className="size-10 rounded-full"
+          />
           <span className="text-sm font-semibold">Maeterna Admin</span>
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5 p-2 pt-3">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2 pt-3">
           {NAV.map(({ to, icon: Icon, label }) => {
             const active =
               location.pathname === to || location.pathname.startsWith(to + "/")
@@ -120,7 +123,11 @@ function AdminLayout() {
       <div className="flex flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b border-border px-6 lg:hidden">
           <div className="flex items-center gap-2">
-            <RiHeartPulseLine className="size-4 text-primary" />
+            <img
+              src="/logo.png"
+              alt="Maeterna"
+              className="size-10 rounded-full"
+            />
             <span className="text-sm font-semibold">Maeterna Admin</span>
           </div>
           <Button variant="ghost" size="icon-sm" onClick={handleSignOut}>

@@ -56,6 +56,7 @@ async function buildDoctorResponse(db: DB, d: typeof userTable.$inferSelect) {
     .get()
   const affs = await db
     .select({
+      id: doctorAffiliation.id,
       institutionId: doctorAffiliation.institutionId,
       institutionName: institution.name,
       departmentId: doctorAffiliation.departmentId,

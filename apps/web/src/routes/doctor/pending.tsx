@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Button } from "@/components/button"
-import { RiHeartPulseLine, RiTimeLine } from "@remixicon/react"
+import { RiTimeLine } from "@remixicon/react"
 import { authClient } from "@/lib/auth-client"
 
 export const Route = createFileRoute("/doctor/pending")({
@@ -23,7 +23,11 @@ function DoctorPendingPage() {
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-center gap-2">
-            <RiHeartPulseLine className="size-4 text-primary" />
+            <img
+              src="/logo.png"
+              alt="Maeterna"
+              className="size-10 rounded-full"
+            />
             <span className="text-sm font-semibold tracking-wide">
               Maeterna
             </span>
