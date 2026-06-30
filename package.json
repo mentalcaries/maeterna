@@ -8,7 +8,7 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "prepare": "vp config"
+    "prepare": "node -e \"process.env.CI ? process.exit(0) : process.exit(1)\" || vp config"
   },
   "devDependencies": {
     "turbo": "^2.9.18",
