@@ -8,10 +8,11 @@ allowBuilds:
   unrs-resolver: true
   msw: false
 catalog:
-  vite: 8.0.0
+  vite: npm:@voidzero-dev/vite-plus-core@latest
   vitest: 4.1.9
   vite-plus: latest
 overrides:
+  vite: "catalog:"
   vitest: "catalog:"
 peerDependencyRules:
   allowAny:

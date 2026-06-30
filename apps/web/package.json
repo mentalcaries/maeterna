@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vp dev --port 3000",
-    "build": "vite build",
+    "build": "vp build",
     "preview": "vp preview",
     "lint": "vp check",
     "format": "vp fmt \"**/*.{ts,tsx}\"",
