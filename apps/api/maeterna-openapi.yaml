@@ -4,7 +4,7 @@ info:
   description: >
     REST API for Maeterna — a maternal health monitoring app for pregnant women
     and their OB-GYN doctors in Trinidad & Tobago. Built with Hono on Cloudflare
-    Workers, Cloudflare D1, and Better Auth.
+    Workers.
   version: 1.0.0
 
 servers:
