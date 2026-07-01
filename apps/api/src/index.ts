@@ -28,6 +28,10 @@ const app = new OpenAPIHono<AppEnv>({
   },
 })
 
+app.get("/debug-env", (c) => {
+  return c.json({ FRONTEND_URL: c.env.FRONTEND_URL })
+})
+
 app.use("*", async (c, next) => {
   return cors({
     origin: [c.env.FRONTEND_URL],
