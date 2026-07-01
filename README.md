@@ -18,7 +18,7 @@ This is a pnpm workspace managed with [Turborepo](https://turbo.build/) and [Vit
 pnpm install     # or: vp install
 ```
 
-Each app needs its own env file — see `apps/web/README.md` and `apps/api/README.md` for what's required.
+Each app needs its own env file — see [`apps/web/README.md`](apps/web/README.md) and [`apps/api/README.md`](apps/api/README.md) for what's required.
 
 ```bash
 pnpm dev         # turbo dev — runs the web app (port 3000) and API (port 8787)
