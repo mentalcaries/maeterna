@@ -29,7 +29,7 @@ const app = new OpenAPIHono<AppEnv>({
 })
 
 app.get("/debug-env", (c) => {
-  return c.json({ FRONTEND_URL: c.env.FRONTEND_URL })
+  return c.json(c.env)
 })
 
 app.use("*", async (c, next) => {
