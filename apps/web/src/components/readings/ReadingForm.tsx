@@ -162,6 +162,7 @@ export function ReadingForm({
   const [mealContext, setMealContext] = useState<MealContext>("fasted")
   const [when, setWhen] = useState<WhenOption>("now")
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined)
+  const [customDateOpen, setCustomDateOpen] = useState(false)
   const [customTime, setCustomTime] = useState<string>("06:00")
   const [notes, setNotes] = useState("")
   const [error, setError] = useState("")
@@ -510,7 +511,7 @@ export function ReadingForm({
         </div>
         {when === "custom" && (
           <div className="flex gap-2">
-            <Popover>
+            <Popover open={customDateOpen} onOpenChange={setCustomDateOpen}>
               <PopoverTrigger
                 type="button"
                 className="flex h-10 flex-1 items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-normal hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -526,7 +527,10 @@ export function ReadingForm({
                 <Calendar
                   mode="single"
                   selected={customDate}
-                  onSelect={setCustomDate}
+                  onSelect={(d) => {
+                    setCustomDate(d)
+                    setCustomDateOpen(false)
+                  }}
                   disabled={{ after: new Date() }}
                 />
               </PopoverContent>
