@@ -95,7 +95,7 @@ async function buildDoctorResponse(db: DB, userId: string) {
     firstName: doctorUser!.firstName ?? "",
     lastName: doctorUser!.lastName ?? "",
     email: doctorUser!.email,
-    registrationNumber: profile?.registrationNumber ?? "",
+    registrationNumber: profile?.registrationNumber ?? null,
     verified: profile?.verified ?? false,
     role: "doctor" as const,
     status: doctorUser!.status as

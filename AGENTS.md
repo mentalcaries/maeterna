@@ -41,10 +41,13 @@ pnpm dlx shadcn@latest add <component> -c apps/web
 
 ```
 apps/web/          React SPA — TanStack Router + TanStack Query, Tailwind CSS
+apps/api/          Hono API on Cloudflare Workers — D1 (Drizzle ORM), Better Auth
 packages/ui/       Shared component library (shadcn/ui, Base UI, Tailwind)
 ```
 
 Root `vite.config.ts` is **not** a dev server — it only configures staged hooks, lint rules, and formatting. Running `vp dev` from the monorepo root will 404 because `index.html` lives in `apps/web/`.
+
+`apps/api` has its own `CLAUDE.md` with backend-specific architecture, commands, and Drizzle migration workflow — read it before touching anything under `apps/api/`.
 
 ## Routing
 
@@ -56,20 +59,31 @@ Route layout by role:
 - `/doctor/*` — desktop, sidebar or header nav
 - `/admin/*` — desktop, sidebar nav
 
-Each role's `route.tsx` acts as an auth guard: it reads `getSession()` on mount and redirects to the role's `/login` if the session is missing or the role doesn't match. The login pages are excluded from the guard via an `isLoginPage` check on the pathname.
+Each role's `route.tsx` acts as an auth guard: it reads the session on mount (via `useSession()` from `apps/web/src/lib/session.ts`, or `authClient.getSession()` directly) and redirects to the role's `/login` if the session is missing or the role doesn't match. The login pages are excluded from the guard via an `isLoginPage` check on the pathname.
 
 ## Authentication & session
 
-`apps/web/src/mock/auth.ts` — thin wrapper around `sessionStorage`. `getSession()` / `setSession()` / `clearSession()`. The session stores `{ userId, role, name }`. No real auth — login screens let you pick a user from a dropdown.
+Real auth via [Better Auth](https://www.better-auth.com/), backed by `apps/api`:
 
-## Mock data layer
+- `apps/web/src/lib/auth-client.ts` — `authClient` (Better Auth client, magic-link plugin) plus `getAppUser()`, which unwraps `authClient.getSession()`'s response into an `AppUser` (`{ id, email, name, role, firstName?, lastName?, status? }`).
+- `apps/web/src/lib/session.ts` — `useSession()`, a thin TanStack Query wrapper around `authClient.getSession()` (query key `["session"]`, 5 min `staleTime`). Prefer this hook over calling `authClient.getSession()` ad hoc so session reads share cache.
+- Login screens do a real magic-link / passkey / Google sign-in (see `apps/api` `CLAUDE.md` for the backend side); there's no dropdown user picker.
 
-`apps/web/src/mock/db.ts` — single module with in-memory arrays (`doctors`, `patients`, `readings`, `auditLog`) and mutating functions. All data resets on page refresh. Patterns:
+`apps/web/src/mock/auth.ts` (sessionStorage-based fake session) still exists in the tree but is **dead code** — nothing imports it anymore. Don't build new features on it.
 
-- Export the raw arrays directly (e.g. `patients`, `doctors`) for reads
-- Export named mutation functions (`addReading`, `addNote`, `setPatientThresholds`, `inviteUser`, `setAccountStatus`, `reassignPatient`, `addAuditEntry`) for writes
-- `makeReading()` is an internal helper — it calls `computeSeverity()` automatically
-- Auto-increment IDs use module-level counters (`_nextReadingIndex`, `_nextAuditIndex`)
+## API client & mock data layer
+
+Real data flows through the backend in `apps/api` via `apps/web/src/lib/api-client.ts`:
+
+```ts
+import { apiClient } from "@/lib/api-client"
+apiClient.GET("/patients/me/readings", { ... })
+apiClient.POST("/profile/complete", { body })
+```
+
+`apiClient` is an `openapi-fetch` client typed against `apps/web/src/lib/api.types.ts` (auto-generated — never hand-edit the bulk of it; a comment at the top says so). **Regenerate it from the live server's `/openapi.json`** (e.g. `npx openapi-typescript http://localhost:8787/openapi.json -o src/lib/api.types.ts` with `apps/api` running), not from `apps/api/maeterna-openapi.yaml`. That yaml file has drifted from the actual Hono route definitions — regenerating from it produces a huge, unrelated diff. If you can't run the live server, hand-edit only the specific fields you changed in the corresponding Hono route (`createRoute` body/response schemas) to keep the generated file minimally correct.
+
+`apps/web/src/mock/db.ts` is **legacy and mostly dead**: its in-memory arrays (`patients`, `doctors`, `readings`, `auditLog`) and mutation functions (`addReading`, `addNote`, `setPatientThresholds`, `inviteUser`, `setAccountStatus`, `reassignPatient`, `addAuditEntry`, `verifyMBTT`, etc.) are not imported anywhere else in the app. The file is kept alive only for its **type exports** (`Reading`, `ReadingType`, `ReadingContext`, `MealContext`, `TimeOfDay`, etc.), which are still `import type`-ed by chart/list components and route files. Don't add new mutation logic here — it won't be wired to anything; use `apiClient` against the real API instead.
 
 ## Reading model
 
@@ -79,9 +93,9 @@ A `Reading` has `type` (`glucose` | `blood_pressure`), `value1`, optional `value
 - `mealContext?: MealContext` — glucose-only (`fasted`, `post_meal`)
 - `timeOfDay?: TimeOfDay` — time slot (`morning`, `afternoon`, `evening`, `before_bed`)
 
-When rendering context in the doctor view, prefer `mealContext` / `timeOfDay` when present and fall back to `context` for older records (see `readingContext()` in `apps/web/src/routes/doctor/patients/$id.tsx`).
+When rendering context in the doctor view, prefer `mealContext` / `timeOfDay` when present and fall back to `context` for older records (see `readingContext()` in `apps/web/src/routes/doctor/patients/$id.tsx`). The real `Reading` API model (`apps/api` `ReadingSchema`) only has the single `context: string` field — `ReadingForm` collapses `mealContext` into that one field on submit (`context: mealContext`), so `mealContext`/`timeOfDay` only ever populate on the legacy mock shape, not on API-sourced readings.
 
-Severity (`warning` | `critical` | undefined) is computed by `computeSeverity()` in `apps/web/src/lib/thresholds.ts` and stored on the reading. When patient thresholds change, `setPatientThresholds()` recomputes severity for all that patient's existing readings.
+Severity (`normal` | `warning` | `critical`) is computed by `computeSeverity()` — `apps/web/src/lib/thresholds.ts` for the old mock flow, `apps/api/src/lib/thresholds.ts` for the real API (`apps/api/src/routes/readings.ts` calls it at write time). Unlike the mock's `setPatientThresholds()`, the real `PUT /doctors/me/patients/{patientId}/thresholds` endpoint does **not** retroactively recompute severity on existing readings when thresholds change — severity is fixed at the time each reading was logged.
 
 ## UI components
 

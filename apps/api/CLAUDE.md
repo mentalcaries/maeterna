@@ -24,7 +24,9 @@ The `.dev.vars` file holds the three env vars drizzle-kit needs (`CLOUDFLARE_ACC
 
 **Stack**: [Hono](https://hono.dev/) on Cloudflare Workers → Cloudflare D1 (SQLite) via Drizzle ORM → Better Auth for authentication.
 
-The full API contract lives in `maeterna-openapi.yaml`. All implementation work should match that spec exactly. The database schema will live in `src/db/schema.ts` (referenced by `drizzle.config.ts`); migrations are output to `drizzle/migrations/`.
+The full API contract is intended to live in `maeterna-openapi.yaml`, but in practice it has **drifted from the actual Hono route definitions** — don't trust it as ground truth without cross-checking the route files under `src/routes/`. The runtime contract actually served at `/openapi.json` is generated dynamically from the `@hono/zod-openapi` `createRoute(...)` schemas via `app.doc(...)` in `src/index.ts`, independent of the yaml file. When `apps/web`'s generated `src/lib/api.types.ts` needs updating, regenerate it from a running server's `/openapi.json` (or hand-edit the specific changed fields) — regenerating from `maeterna-openapi.yaml` can produce a large, unrelated diff. If you intentionally change a route's contract, update the yaml too for documentation purposes, but the source of truth is the Zod route schemas.
+
+The database schema lives in `src/db/schema.ts` (referenced by `drizzle.config.ts`); migrations are output to `drizzle/migrations/`. `db:generate` only diffs the schema file locally (no DB connection needed); `db:migrate` applies pending migrations to the **remote** D1 database using the credentials in `.dev.vars` — treat it as a real, hard-to-reverse production action.
 
 **Domain model** (from the OpenAPI spec):
 
@@ -34,7 +36,7 @@ The full API contract lives in `maeterna-openapi.yaml`. All implementation work 
 - **Access grants**: Patients explicitly grant access to either an individual doctor (`grantType: individual`) or an entire department (`grantType: department`). Grants can be revoked. Doctor reads of a patient record are logged in `access_log`.
 - **Doctor affiliations**: Doctors belong to one or more institution + department pairs. Institutions are typed (`hospital`, `health_centre`, `private_practice`).
 - **Invites**: Doctors create invite tokens (scoped to a department) that patients use during onboarding to pre-wire an access grant. One public endpoint (`GET /invites/{token}`) requires no auth. Admin can also send invites by email.
-- **Onboarding flow**: After first sign-in (magic link / passkey / Google via Better Auth), users hit `POST /profile/complete`. Patients supply DOB; doctors supply a registration number that triggers MBTT registry verification. Unverified doctors land in `pending_verification` until admin approves via `POST /admin/users/{userId}/approve`.
+- **Onboarding flow**: After first sign-in (magic link / passkey / Google via Better Auth), users hit `POST /profile/complete`. Patients supply DOB; doctors supply only `firstName`/`lastName`, which triggers a **name-only** MBTT registry lookup: candidates are matched by case-insensitive exact last-name match, then the entered first name must appear as a whole word in the matched entry's first name (see `mbttRegistry` query in `src/routes/profile.ts`). There is no member ID / registration number in this flow — `doctorProfile.registrationNumber` is nullable in the DB and unused by onboarding, kept only for potential future use. On lookup miss, doctors can call `POST /profile/complete/submit-for-review` (also name-only) to land in `pending_verification` until admin approves via `POST /admin/users/{userId}/approve`.
 
 **Auth**: Bearer JWT issued by Better Auth. All routes require auth except `GET /invites/{token}`. The `admin` tag routes are restricted to the `admin` role.
 

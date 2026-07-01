@@ -137,6 +137,7 @@ components:
           format: email
         registrationNumber:
           type: string
+          nullable: true
           example: TT-12345
         verified:
           type: boolean
@@ -422,8 +423,8 @@ paths:
       summary: Complete profile after first sign-in
       description: >
         Called once after a user signs in for the first time via magic link,
-        passkey, or Google. Saves name, DOB (patients), or registration number
-        (doctors). Role is determined from the session.
+        passkey, or Google. Saves name, DOB (patients), or triggers name-only
+        MBTT verification (doctors). Role is determined from the session.
       requestBody:
         required: true
         content:
@@ -443,13 +444,13 @@ paths:
                   format: date
                   description: Required for patients
                   example: "1995-03-14"
-                registrationNumber:
-                  type: string
-                  description: Required for doctors — triggers MBTT verification
-                  example: TT-12345
       responses:
         "200":
-          description: Profile saved. Returns updated user object, or verificationFailed on MBTT lookup miss.
+          description: >
+            Profile saved. For doctors, firstName and lastName trigger a
+            name-only MBTT registry lookup (exact last name match, first name
+            word match). Returns updated user object, or verificationFailed
+            on lookup miss.
           content:
             application/json:
               schema:
@@ -468,21 +469,19 @@ paths:
       summary: Submit doctor profile for manual MBTT verification review
       description: >
         Called when a doctor's MBTT auto-verification fails and they choose to
-        request manual review. Saves their name and registration number and sets
-        status to pending_verification.
+        request manual review. Saves their name and sets status to
+        pending_verification.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [firstName, lastName, registrationNumber]
+              required: [firstName, lastName]
               properties:
                 firstName:
                   type: string
                 lastName:
-                  type: string
-                registrationNumber:
                   type: string
       responses:
         "200":
@@ -501,7 +500,7 @@ paths:
       tags: [Profile]
       summary: Save doctor institution and department affiliations
       description: >
-        Called during doctor onboarding step 2, after registration number
+        Called during doctor onboarding step 2, after name-based MBTT
         verification. Can also be used later to update affiliations.
         Replaces all existing affiliations for this doctor.
       requestBody:
@@ -1270,7 +1269,7 @@ paths:
     post:
       tags: [Admin]
       summary: Approve a flagged doctor account
-      description: Used when a doctor's registration number was not found in the MBTT registry and requires manual review.
+      description: Used when a doctor's name was not found in the MBTT registry and requires manual review.
       parameters:
         - name: userId
           in: path

@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   user as userTable,
@@ -36,7 +36,6 @@ const completeProfileRoute = createRoute({
             firstName: z.string().min(1),
             lastName: z.string().min(1),
             dateOfBirth: z.string().optional(),
-            registrationNumber: z.string().optional(),
           }),
         },
       },
@@ -117,7 +116,6 @@ const submitForReviewRoute = createRoute({
           schema: z.object({
             firstName: z.string().min(1),
             lastName: z.string().min(1),
-            registrationNumber: z.string().min(1),
           }),
         },
       },
@@ -241,32 +239,17 @@ export function registerProfileRoutes(app: AppRouter) {
     }
 
     // doctor — compute verification first, no DB writes on failure
-    if (!body.registrationNumber)
-      raise(422, "registrationNumber is required for doctors")
-
-    const registryEntry = await db
+    const candidates = await db
       .select()
       .from(mbttRegistry)
-      .where(eq(mbttRegistry.memberId, body.registrationNumber))
-      .get()
+      .where(sql`lower(${mbttRegistry.lastName}) = lower(${body.lastName})`)
 
-    const isNameMatch = (() => {
-      if (!registryEntry) return false
-      const registryFirstNames = registryEntry.firstName
-        .toLowerCase()
-        .split(" ")
-      const isFirstNameMatch = registryFirstNames.includes(
-        body.firstName.toLowerCase()
-      )
-      const isLastNameMatch =
-        registryEntry.lastName.toLowerCase() === body.lastName.toLowerCase()
-      return isFirstNameMatch && isLastNameMatch
-    })()
+    const match = candidates.find((entry) => {
+      const registryFirstNames = entry.firstName.toLowerCase().split(" ")
+      return registryFirstNames.includes(body.firstName.toLowerCase())
+    })
 
-    const verified =
-      registryEntry !== undefined &&
-      isValidRegistration(registryEntry.status) &&
-      isNameMatch
+    const verified = match !== undefined && isValidRegistration(match.status)
 
     if (!verified) {
       return c.json({ verificationFailed: true as const }, 200)
@@ -288,14 +271,12 @@ export function registerProfileRoutes(app: AppRouter) {
       .values({
         id: crypto.randomUUID(),
         userId: currentUser.id,
-        registrationNumber: body.registrationNumber,
         verified: true,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: doctorProfile.userId,
         set: {
-          registrationNumber: body.registrationNumber,
           verified: true,
           updatedAt: now,
         },
@@ -317,7 +298,7 @@ export function registerProfileRoutes(app: AppRouter) {
       firstName: updated!.firstName ?? "",
       lastName: updated!.lastName ?? "",
       email: updated!.email,
-      registrationNumber: profile?.registrationNumber ?? "",
+      registrationNumber: profile?.registrationNumber ?? null,
       verified: true,
       role: updated!.role as "doctor",
       status: updated!.status as "active",
@@ -351,14 +332,12 @@ export function registerProfileRoutes(app: AppRouter) {
       .values({
         id: crypto.randomUUID(),
         userId: currentUser.id,
-        registrationNumber: body.registrationNumber,
         verified: false,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: doctorProfile.userId,
         set: {
-          registrationNumber: body.registrationNumber,
           verified: false,
           updatedAt: now,
         },
@@ -380,7 +359,7 @@ export function registerProfileRoutes(app: AppRouter) {
       firstName: updated!.firstName ?? "",
       lastName: updated!.lastName ?? "",
       email: updated!.email,
-      registrationNumber: profile?.registrationNumber ?? "",
+      registrationNumber: profile?.registrationNumber ?? null,
       verified: false,
       role: updated!.role as "doctor",
       status: "pending_verification" as const,
@@ -461,7 +440,7 @@ export function registerProfileRoutes(app: AppRouter) {
       firstName: doctorUser!.firstName ?? "",
       lastName: doctorUser!.lastName ?? "",
       email: doctorUser!.email,
-      registrationNumber: profile?.registrationNumber ?? "",
+      registrationNumber: profile?.registrationNumber ?? null,
       verified: profile?.verified ?? false,
       role: "doctor" as const,
       status: doctorUser!.status as "active",

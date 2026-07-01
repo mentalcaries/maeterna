@@ -74,7 +74,6 @@ export interface paths {
             firstName: string
             lastName: string
             dateOfBirth?: string
-            registrationNumber?: string
           }
         }
       }
@@ -157,7 +156,6 @@ export interface paths {
           "application/json": {
             firstName: string
             lastName: string
-            registrationNumber: string
           }
         }
       }
@@ -2405,7 +2403,7 @@ export interface components {
       lastName: string
       /** Format: email */
       email: string
-      registrationNumber: string
+      registrationNumber?: string | null
       verified: boolean
       /** @enum {string} */
       role: "patient" | "doctor" | "admin"

@@ -65,7 +65,7 @@ export const DoctorSchema = z
     firstName: z.string(),
     lastName: z.string(),
     email: z.string().email(),
-    registrationNumber: z.string(),
+    registrationNumber: z.string().nullable().optional(),
     verified: z.boolean(),
     role: RoleSchema,
     status: UserStatusSchema,

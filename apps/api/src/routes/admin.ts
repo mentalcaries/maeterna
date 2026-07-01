@@ -72,7 +72,7 @@ async function buildDoctorResponse(db: DB, d: typeof userTable.$inferSelect) {
     firstName: d.firstName ?? "",
     lastName: d.lastName ?? "",
     email: d.email,
-    registrationNumber: profile?.registrationNumber ?? "",
+    registrationNumber: profile?.registrationNumber ?? null,
     verified: profile?.verified ?? false,
     role: "doctor" as const,
     status: d.status as "active" | "suspended" | "pending_verification",

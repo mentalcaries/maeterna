@@ -47,17 +47,13 @@ function DoctorProfilePage() {
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [registrationNumber, setRegistrationNumber] = useState("")
   const [profileError, setProfileError] = useState("")
   const [verificationFailed, setVerificationFailed] = useState(false)
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
 
   const profileMutation = useMutation({
-    mutationFn: (body: {
-      firstName: string
-      lastName: string
-      registrationNumber: string
-    }) => apiClient.POST("/profile/complete", { body }),
+    mutationFn: (body: { firstName: string; lastName: string }) =>
+      apiClient.POST("/profile/complete", { body }),
     onSuccess: (res) => {
       const data = res.data
       if (!data) return
@@ -75,11 +71,8 @@ function DoctorProfilePage() {
   })
 
   const submitForReviewMutation = useMutation({
-    mutationFn: (body: {
-      firstName: string
-      lastName: string
-      registrationNumber: string
-    }) => apiClient.POST("/profile/complete/submit-for-review", { body }),
+    mutationFn: (body: { firstName: string; lastName: string }) =>
+      apiClient.POST("/profile/complete/submit-for-review", { body }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["session"] })
       void navigate({ to: "/signup/doctor/pending" })
@@ -98,14 +91,9 @@ function DoctorProfilePage() {
       setProfileError("Last name is required.")
       return
     }
-    if (!registrationNumber.trim()) {
-      setProfileError("MBTT Member ID is required.")
-      return
-    }
     profileMutation.mutate({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      registrationNumber: registrationNumber.trim(),
     })
   }
 
@@ -125,7 +113,7 @@ function DoctorProfilePage() {
         <CardHeader>
           <CardTitle>Profile &amp; registration</CardTitle>
           <CardDescription className="text-base">
-            Enter your name and MBTT Member ID.
+            Enter your name as listed on the MBTT national registry.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -165,27 +153,6 @@ function DoctorProfilePage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label
-                htmlFor="reg"
-                className="text-base font-medium tracking-normal normal-case"
-              >
-                MBTT Member ID
-              </Label>
-              <Input
-                id="reg"
-                className="text-base"
-                placeholder="e.g. 10284"
-                value={registrationNumber}
-                onChange={(e) => setRegistrationNumber(e.target.value)}
-                autoComplete="off"
-                inputMode="numeric"
-              />
-              <p className="text-sm text-muted-foreground">
-                Your numeric member ID as listed on the MBTT national registry.
-              </p>
-            </div>
-
             {(profileError || profileMutation.isError) && (
               <p className="text-sm text-destructive">
                 {profileError || "Something went wrong. Please try again."}
@@ -195,8 +162,9 @@ function DoctorProfilePage() {
             {verificationFailed && (
               <div className="flex flex-col gap-2">
                 <p className="my-3 text-sm text-destructive">
-                  We couldn't verify your details against the MBTT registry.
-                  Please check your Member ID and try again.
+                  We couldn't verify your name against the MBTT registry. Please
+                  check that your name matches your registration exactly and try
+                  again.
                 </p>
                 <Button
                   variant="outline"
@@ -243,7 +211,6 @@ function DoctorProfilePage() {
                 submitForReviewMutation.mutate({
                   firstName: firstName.trim(),
                   lastName: lastName.trim(),
-                  registrationNumber: registrationNumber.trim(),
                 })
               }}
               disabled={submitForReviewMutation.isPending}

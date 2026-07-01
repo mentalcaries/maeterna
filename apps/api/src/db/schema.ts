@@ -91,7 +91,7 @@ export const doctorProfile = sqliteTable("doctor_profile", {
     .notNull()
     .unique()
     .references(() => user.id, { onDelete: "cascade" }),
-  registrationNumber: text("registration_number").notNull().unique(),
+  registrationNumber: text("registration_number").unique(),
   verified: integer("verified", { mode: "boolean" }).notNull().default(false),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 })
