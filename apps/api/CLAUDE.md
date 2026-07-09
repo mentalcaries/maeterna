@@ -20,6 +20,8 @@ pnpm run db:studio    # Open Drizzle Studio for the D1 database
 
 The `.dev.vars` file holds the three env vars drizzle-kit needs (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_D1_TOKEN`). These are for drizzle-kit only — the Worker runtime accesses D1 through the `DB` binding defined in `wrangler.jsonc`.
 
+See `DB.md` for local D1 (Miniflare) setup — `db:migrate` above only ever applies to the remote database.
+
 ## Architecture
 
 **Stack**: [Hono](https://hono.dev/) on Cloudflare Workers → Cloudflare D1 (SQLite) via Drizzle ORM → Better Auth for authentication.
