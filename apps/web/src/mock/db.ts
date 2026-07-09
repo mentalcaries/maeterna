@@ -2,12 +2,12 @@ import {
   DEFAULT_THRESHOLDS,
   computeSeverity,
   type Thresholds,
-  type AlertSeverity,
+  type SeverityType,
 } from "@/lib/thresholds"
 
 export type Role = "patient" | "doctor" | "admin"
 export type ReadingType = "glucose" | "blood_pressure"
-export type ReadingContext = "fasting" | "post_meal" | "morning" | "before_bed"
+export type ReadingContext = "fasted" | "post_meal" | "morning" | "evening"
 export type MealContext = "fasted" | "post_meal"
 export type TimeOfDay =
   | "morning"
@@ -54,7 +54,7 @@ export interface Reading {
   timeOfDay?: TimeOfDay
   notes?: string
   timestamp: string
-  severity?: AlertSeverity
+  severity: SeverityType
 }
 
 export interface AuditEntry {
@@ -221,7 +221,7 @@ function makeReading(
 ): Reading {
   const patient = patients.find((p) => p.id === patientId)
   const thresholds = { ...DEFAULT_THRESHOLDS, ...patient?.thresholds }
-  const severity = computeSeverity(type, value1, value2, context, thresholds)
+  const severity = computeSeverity(type, context, value1, value2, thresholds)
   return {
     id,
     patientId,
@@ -245,7 +245,7 @@ export const readings: Reading[] = [
     "glucose",
     4.9,
     undefined,
-    "fasting",
+    "fasted",
     88,
     7
   ),
@@ -280,7 +280,7 @@ export const readings: Reading[] = [
     "glucose",
     7.3,
     undefined,
-    "fasting",
+    "fasted",
     64,
     7
   ),
@@ -291,7 +291,7 @@ export const readings: Reading[] = [
     "blood_pressure",
     145,
     92,
-    "before_bed",
+    "evening",
     56,
     21
   ),
@@ -337,7 +337,7 @@ export const readings: Reading[] = [
     "glucose",
     5.5,
     undefined,
-    "fasting",
+    "fasted",
     85,
     6
   ),
@@ -370,7 +370,7 @@ export const readings: Reading[] = [
     "glucose",
     6.0,
     undefined,
-    "before_bed",
+    "evening",
     63,
     22
   ),
@@ -404,7 +404,7 @@ export const readings: Reading[] = [
     "blood_pressure",
     122,
     80,
-    "before_bed",
+    "evening",
     35,
     21
   ),
@@ -415,7 +415,7 @@ export const readings: Reading[] = [
     "glucose",
     4.8,
     undefined,
-    "fasting",
+    "fasted",
     20,
     7
   ),
@@ -437,7 +437,7 @@ export const readings: Reading[] = [
     "glucose",
     5.8,
     undefined,
-    "fasting",
+    "fasted",
     76,
     6
   ),
@@ -471,7 +471,7 @@ export const readings: Reading[] = [
     "glucose",
     6.4,
     undefined,
-    "before_bed",
+    "evening",
     52,
     22
   ),
@@ -493,7 +493,7 @@ export const readings: Reading[] = [
     "glucose",
     7.9,
     undefined,
-    "fasting",
+    "fasted",
     34,
     7
   ),
@@ -516,7 +516,7 @@ export const readings: Reading[] = [
     "glucose",
     5.2,
     undefined,
-    "fasting",
+    "fasted",
     58,
     7
   ),
@@ -560,7 +560,7 @@ export const readings: Reading[] = [
     "blood_pressure",
     135,
     87,
-    "before_bed",
+    "evening",
     28,
     22
   ),
@@ -582,7 +582,7 @@ export const readings: Reading[] = [
     "glucose",
     4.6,
     undefined,
-    "fasting",
+    "fasted",
     44,
     7
   ),
@@ -628,7 +628,7 @@ export const readings: Reading[] = [
     "glucose",
     5.9,
     undefined,
-    "before_bed",
+    "evening",
     18,
     22
   ),
@@ -814,9 +814,9 @@ export function addReading(input: Omit<Reading, "id" | "severity">): Reading {
   const thresholds = { ...DEFAULT_THRESHOLDS, ...patient?.thresholds }
   const severity = computeSeverity(
     input.type,
+    input.context,
     input.value1,
     input.value2,
-    input.context,
     thresholds
   )
   const reading: Reading = {
@@ -848,9 +848,9 @@ export function setPatientThresholds(
       const effective = { ...DEFAULT_THRESHOLDS, ...patient.thresholds }
       r.severity = computeSeverity(
         r.type,
+        r.context,
         r.value1,
         r.value2,
-        r.context,
         effective
       )
     })

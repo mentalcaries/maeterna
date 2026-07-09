@@ -41,10 +41,11 @@ import {
   RiFilePdfLine,
 } from "@remixicon/react"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
-import type { Thresholds, AlertSeverity } from "@/lib/thresholds"
-import { formatGlucose } from "@/lib/glucose"
+import type { Thresholds } from "@/lib/thresholds"
+import { formatGlucose, mgdlToMmol, mmolToMgdl } from "@/lib/glucose"
 import { cn } from "@/lib/utils"
-import type { Reading } from "@/mock/db"
+import { adaptReading } from "@/lib/readings"
+import { type TimeRange, RANGE_LABELS, rangeToFrom } from "@/lib/time-range"
 
 export const Route = createFileRoute("/doctor/patients/$id")({
   component: PatientDetailPage,
@@ -52,49 +53,6 @@ export const Route = createFileRoute("/doctor/patients/$id")({
 
 type ApiReading = components["schemas"]["Reading"]
 type ApiThresholds = components["schemas"]["Thresholds"]
-
-function adaptReading(r: ApiReading): Reading {
-  return {
-    id: r.id,
-    patientId: r.patientId,
-    loggedById: r.loggedById,
-    type: r.type,
-    value1: r.value1,
-    value2: r.value2 ?? undefined,
-    unit: r.unit,
-    context: r.context as import("@/mock/db").ReadingContext,
-    notes: r.notes ?? undefined,
-    timestamp: r.timestamp,
-    severity:
-      r.severity === "normal" ? undefined : (r.severity as AlertSeverity),
-  }
-}
-
-function apiThresholdsToLocal(t: ApiThresholds): Thresholds {
-  return {
-    fasting_glucose_warning: t.fastingGlucoseWarning,
-    fasting_glucose_critical: t.fastingGlucoseCritical,
-    postmeal_glucose_warning: t.postMealGlucoseWarning,
-    postmeal_glucose_critical: t.postMealGlucoseCritical,
-    systolic_warning: t.systolicWarning,
-    systolic_critical: t.systolicCritical,
-    diastolic_warning: t.diastolicWarning,
-    diastolic_critical: t.diastolicCritical,
-  }
-}
-
-function localThresholdsToApi(t: Thresholds): ApiThresholds {
-  return {
-    fastingGlucoseWarning: t.fasting_glucose_warning,
-    fastingGlucoseCritical: t.fasting_glucose_critical,
-    postMealGlucoseWarning: t.postmeal_glucose_warning,
-    postMealGlucoseCritical: t.postmeal_glucose_critical,
-    systolicWarning: t.systolic_warning,
-    systolicCritical: t.systolic_critical,
-    diastolicWarning: t.diastolic_warning,
-    diastolicCritical: t.diastolic_critical,
-  }
-}
 
 const MEAL_LABELS: Record<string, string> = {
   fasted: "Fasted",
@@ -108,10 +66,10 @@ const TIME_LABELS: Record<string, string> = {
   at_clinic: "At clinic",
 }
 const CONTEXT_LABELS: Record<string, string> = {
-  fasting: "Fasting",
+  fasted: "Fasted",
   post_meal: "After eating",
   morning: "Morning",
-  before_bed: "Night",
+  evening: "Evening",
 }
 
 function readingContext(r: {
@@ -146,6 +104,7 @@ function PatientDetailPage() {
   const [thresholdOpen, setThresholdOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [displayUnit, setDisplayUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
+  const [range, setRange] = useState<TimeRange>("month")
 
   const { data: prefsData } = useQuery({
     queryKey: ["preferences"],
@@ -159,10 +118,10 @@ function PatientDetailPage() {
   }, [prefsData])
 
   const { data: patientDetail, isPending } = useQuery({
-    queryKey: ["patient", patientId],
+    queryKey: ["patient", patientId, range],
     queryFn: async () => {
       const res = await apiClient.GET("/doctors/me/patients/{patientId}", {
-        params: { path: { patientId } },
+        params: { path: { patientId }, query: { from: rangeToFrom(range) } },
       })
       return res.data ?? null
     },
@@ -170,24 +129,19 @@ function PatientDetailPage() {
 
   const patient = patientDetail?.patient
   const apiReadings = patientDetail?.readings ?? []
-  const apiThresholds = patientDetail?.thresholds ?? null
-  const localThresholds = apiThresholds
-    ? apiThresholdsToLocal(apiThresholds)
-    : DEFAULT_THRESHOLDS
+  const localThresholds: Thresholds =
+    patientDetail?.thresholds ?? DEFAULT_THRESHOLDS
+  const isCustomThresholds = (
+    Object.keys(DEFAULT_THRESHOLDS) as (keyof Thresholds)[]
+  ).some((key) => localThresholds[key] !== DEFAULT_THRESHOLDS[key])
 
   const [thresholdForm, setThresholdForm] = useState<
     Record<keyof Thresholds, string>
   >(() => ({
-    fasting_glucose_warning: String(localThresholds.fasting_glucose_warning),
-    fasting_glucose_critical: String(localThresholds.fasting_glucose_critical),
-    postmeal_glucose_warning: String(localThresholds.postmeal_glucose_warning),
-    postmeal_glucose_critical: String(
-      localThresholds.postmeal_glucose_critical
-    ),
-    systolic_warning: String(localThresholds.systolic_warning),
-    systolic_critical: String(localThresholds.systolic_critical),
-    diastolic_warning: String(localThresholds.diastolic_warning),
-    diastolic_critical: String(localThresholds.diastolic_critical),
+    fastingGlucoseHigh: String(localThresholds.fastingGlucoseHigh),
+    postMealGlucoseHigh: String(localThresholds.postMealGlucoseHigh),
+    systolicHigh: String(localThresholds.systolicHigh),
+    diastolicHigh: String(localThresholds.diastolicHigh),
   }))
 
   const noteMutation = useMutation({
@@ -262,7 +216,7 @@ function PatientDetailPage() {
   }
 
   const allReadings = apiReadings.map(adaptReading)
-  const alerts = allReadings.filter((r) => r.severity !== undefined)
+  const alerts = allReadings.filter((r) => r.severity === "high")
   const patientName = `${patient.firstName} ${patient.lastName}`
 
   function handleSaveNote() {
@@ -271,25 +225,15 @@ function PatientDetailPage() {
   }
 
   function handleSaveThresholds() {
-    const parsed: Thresholds = {
-      fasting_glucose_warning: parseFloat(
-        thresholdForm.fasting_glucose_warning
+    const toMgdl = (v: number) => (displayUnit === "mmol/L" ? mmolToMgdl(v) : v)
+    thresholdMutation.mutate({
+      fastingGlucoseHigh: toMgdl(parseFloat(thresholdForm.fastingGlucoseHigh)),
+      postMealGlucoseHigh: toMgdl(
+        parseFloat(thresholdForm.postMealGlucoseHigh)
       ),
-      fasting_glucose_critical: parseFloat(
-        thresholdForm.fasting_glucose_critical
-      ),
-      postmeal_glucose_warning: parseFloat(
-        thresholdForm.postmeal_glucose_warning
-      ),
-      postmeal_glucose_critical: parseFloat(
-        thresholdForm.postmeal_glucose_critical
-      ),
-      systolic_warning: parseFloat(thresholdForm.systolic_warning),
-      systolic_critical: parseFloat(thresholdForm.systolic_critical),
-      diastolic_warning: parseFloat(thresholdForm.diastolic_warning),
-      diastolic_critical: parseFloat(thresholdForm.diastolic_critical),
-    }
-    thresholdMutation.mutate(localThresholdsToApi(parsed))
+      systolicHigh: parseFloat(thresholdForm.systolicHigh),
+      diastolicHigh: parseFloat(thresholdForm.diastolicHigh),
+    })
   }
 
   function handleExportExcel() {
@@ -307,7 +251,7 @@ function PatientDetailPage() {
         Unit: r.type === "blood_pressure" ? "mmHg" : displayUnit,
         Context: readingContext(r),
         Notes: r.notes ?? "",
-        Status: r.severity ?? "Normal",
+        Status: r.severity === "high" ? "High" : "Normal",
       }
     })
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -396,7 +340,7 @@ function PatientDetailPage() {
         r.type === "blood_pressure" ? "mmHg" : displayUnit,
         readingContext(r),
         r.notes ?? "",
-        r.severity ?? "Normal",
+        r.severity === "high" ? "High" : "Normal",
       ]
 
       doc.setFontSize(7)
@@ -464,22 +408,39 @@ function PatientDetailPage() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">{patientName}</h1>
-          {patient.status === "suspended" && (
-            <Badge variant="destructive">Suspended</Badge>
-          )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold">{patientName}</h1>
+            {patient.status === "suspended" && (
+              <Badge variant="destructive">Suspended</Badge>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const fromMgdl = (v: number) =>
+                displayUnit === "mmol/L" ? mgdlToMmol(v) : v
+              setThresholdForm({
+                fastingGlucoseHigh: String(
+                  fromMgdl(localThresholds.fastingGlucoseHigh)
+                ),
+                postMealGlucoseHigh: String(
+                  fromMgdl(localThresholds.postMealGlucoseHigh)
+                ),
+                systolicHigh: String(localThresholds.systolicHigh),
+                diastolicHigh: String(localThresholds.diastolicHigh),
+              })
+              setThresholdOpen(true)
+            }}
+          >
+            Set thresholds
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">{patient.email}</p>
         {alerts.length > 0 && (
           <div className="mt-1 flex items-center gap-2">
-            <Badge
-              variant={
-                alerts.some((r) => r.severity === "critical")
-                  ? "critical"
-                  : "warning"
-              }
-            >
+            <Badge variant="critical">
               {alerts.length} alert{alerts.length !== 1 ? "s" : ""}
             </Badge>
             <span className="text-xs text-muted-foreground">
@@ -490,8 +451,8 @@ function PatientDetailPage() {
       </div>
 
       <Tabs defaultValue="glucose">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <TabsList className="h-auto gap-0.5 rounded-md border border-border bg-transparent p-0.5">
               <TabsTrigger
                 value="glucose"
@@ -524,33 +485,23 @@ function PatientDetailPage() {
               ))}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => {
-              setThresholdForm({
-                fasting_glucose_warning: String(
-                  localThresholds.fasting_glucose_warning
-                ),
-                fasting_glucose_critical: String(
-                  localThresholds.fasting_glucose_critical
-                ),
-                postmeal_glucose_warning: String(
-                  localThresholds.postmeal_glucose_warning
-                ),
-                postmeal_glucose_critical: String(
-                  localThresholds.postmeal_glucose_critical
-                ),
-                systolic_warning: String(localThresholds.systolic_warning),
-                systolic_critical: String(localThresholds.systolic_critical),
-                diastolic_warning: String(localThresholds.diastolic_warning),
-                diastolic_critical: String(localThresholds.diastolic_critical),
-              })
-              setThresholdOpen(true)
-            }}
-          >
-            Set thresholds
-          </Button>
+          <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+            {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRange(r)}
+                className={cn(
+                  "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  range === r
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {RANGE_LABELS[r]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <TabsContent value="glucose">
@@ -615,10 +566,6 @@ function PatientDetailPage() {
                   r.type === "blood_pressure"
                     ? `${r.value1}/${r.value2 ?? "?"} mmHg`
                     : formatGlucose(r.value1, displayUnit)
-                const severity =
-                  r.severity === "normal"
-                    ? undefined
-                    : (r.severity as AlertSeverity)
 
                 return (
                   <TableRow key={r.id}>
@@ -641,7 +588,7 @@ function PatientDetailPage() {
                       {readingContext(r)}
                     </TableCell>
                     <TableCell>
-                      <ReadingBadge severity={severity} />
+                      <ReadingBadge severity={r.severity} />
                     </TableCell>
                     <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
                       {r.notes ?? "—"}
@@ -690,17 +637,21 @@ function PatientDetailPage() {
           <DialogHeader>
             <DialogTitle>Alert thresholds — {patientName}</DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            {isCustomThresholds
+              ? "Showing this patient's custom thresholds."
+              : "Showing platform default thresholds."}
+          </p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {(
               [
-                ["Fasting glucose warn (mg/dL)", "fasting_glucose_warning"],
-                ["Fasting glucose crit (mg/dL)", "fasting_glucose_critical"],
-                ["Post-meal warn (mg/dL)", "postmeal_glucose_warning"],
-                ["Post-meal crit (mg/dL)", "postmeal_glucose_critical"],
-                ["Systolic warn (mmHg)", "systolic_warning"],
-                ["Systolic crit (mmHg)", "systolic_critical"],
-                ["Diastolic warn (mmHg)", "diastolic_warning"],
-                ["Diastolic crit (mmHg)", "diastolic_critical"],
+                [`Fasting glucose high (${displayUnit})`, "fastingGlucoseHigh"],
+                [
+                  `Post-meal glucose high (${displayUnit})`,
+                  "postMealGlucoseHigh",
+                ],
+                ["Systolic high (mmHg)", "systolicHigh"],
+                ["Diastolic high (mmHg)", "diastolicHigh"],
               ] as [string, keyof typeof thresholdForm][]
             ).map(([label, key]) => (
               <div key={key} className="flex flex-col gap-1">

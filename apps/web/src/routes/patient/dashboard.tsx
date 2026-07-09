@@ -8,28 +8,11 @@ import { useSession } from "@/lib/session"
 import { getAppUser } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
 import { ReadingList } from "@/components/readings/ReadingList"
-import type { Reading } from "@/mock/db"
-import type { components } from "@/lib/api.types"
+import { adaptReading } from "@/lib/readings"
 
 export const Route = createFileRoute("/patient/dashboard")({
   component: PatientDashboardPage,
 })
-
-function adaptReading(r: components["schemas"]["Reading"]): Reading {
-  return {
-    id: r.id,
-    patientId: r.patientId,
-    loggedById: r.loggedById,
-    type: r.type,
-    value1: r.value1,
-    value2: r.value2 ?? undefined,
-    unit: r.unit,
-    context: r.context as import("@/mock/db").ReadingContext,
-    notes: r.notes ?? undefined,
-    timestamp: r.timestamp,
-    severity: r.severity === "normal" ? undefined : r.severity,
-  }
-}
 
 function PatientDashboardPage() {
   const { data: sessionData } = useSession()
@@ -52,7 +35,7 @@ function PatientDashboardPage() {
 
   const apiReadings = data?.data?.data ?? []
   const recent = apiReadings.map(adaptReading)
-  const alertCount = apiReadings.filter((r) => r.severity !== "normal").length
+  const alertCount = apiReadings.filter((r) => r.severity === "high").length
   const glucoseUnit =
     (prefsData?.data?.glucoseUnit as "mg/dL" | "mmol/L" | undefined) ?? "mg/dL"
 
@@ -74,10 +57,10 @@ function PatientDashboardPage() {
       </div>
 
       {alertCount > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900/50 dark:bg-yellow-950/20">
+        <Card className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20">
           <CardContent className="flex items-center gap-3 p-4">
-            <Badge variant="warning">{alertCount}</Badge>
-            <p className="text-base text-yellow-800 dark:text-yellow-400">
+            <Badge variant="critical">{alertCount}</Badge>
+            <p className="text-base text-red-800 dark:text-red-400">
               {alertCount === 1 ? "reading" : "readings"} out of normal range in
               your history.
             </p>
