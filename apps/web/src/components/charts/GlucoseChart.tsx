@@ -25,6 +25,7 @@ interface GlucoseChartProps {
   thresholdOverrides?: Partial<Thresholds>
   displayUnit?: "mg/dL" | "mmol/L"
   highlightedReadingId?: string | null
+  contextFilter?: "all" | "fasted" | "post_meal"
 }
 
 const GLUCOSE_FLOOR_MGDL = 65
@@ -228,6 +229,7 @@ export function GlucoseChart({
   thresholdOverrides,
   displayUnit = "mg/dL",
   highlightedReadingId,
+  contextFilter = "all",
 }: GlucoseChartProps) {
   const thresholds = getEffectiveThresholds(thresholdOverrides)
   const [containerRef, containerWidth] = useElementWidth<HTMLDivElement>()
@@ -243,7 +245,11 @@ export function GlucoseChart({
     displayUnit === "mmol/L" ? mgdlToMmol(v) : v
 
   const data: GlucosePoint[] = readings
-    .filter((r) => r.type === "glucose")
+    .filter(
+      (r) =>
+        r.type === "glucose" &&
+        (contextFilter === "all" || r.context === contextFilter)
+    )
     .sort(
       (a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -260,9 +266,15 @@ export function GlucoseChart({
     }))
 
   if (data.length === 0) {
+    const emptyLabel =
+      contextFilter === "all"
+        ? "glucose"
+        : contextFilter === "post_meal"
+          ? "post-meal"
+          : "fasted"
     return (
       <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-        No glucose readings available.
+        No {emptyLabel} readings available.
       </div>
     )
   }

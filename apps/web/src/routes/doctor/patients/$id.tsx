@@ -69,6 +69,13 @@ const CONTEXT_LABELS: Record<string, string> = {
   evening: "Evening",
 }
 
+type GlucoseContextFilter = "all" | "fasted" | "post_meal"
+const GLUCOSE_CONTEXT_FILTER_LABELS: Record<GlucoseContextFilter, string> = {
+  all: "All",
+  fasted: "Fasted",
+  post_meal: "Post-meal",
+}
+
 function readingContext(r: {
   context: string
   mealContext?: string
@@ -95,6 +102,8 @@ function PatientDetailPage() {
   const [displayUnit, setDisplayUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
   const [range, setRange] = useState<TimeRange>("month")
   const [activeTab, setActiveTab] = useState<"glucose" | "bp">("glucose")
+  const [glucoseContextFilter, setGlucoseContextFilter] =
+    useState<GlucoseContextFilter>("all")
   const [highlightedReadingId, setHighlightedReadingId] = useState<
     string | null
   >(null)
@@ -379,7 +388,7 @@ function PatientDetailPage() {
               Export
             </Button>
             {exportOpen && (
-              <div className="absolute top-full right-0 z-10 mt-1 min-w-[160px] rounded-lg border border-border bg-background p-1 shadow-md">
+              <div className="absolute top-full right-0 z-10 mt-1 min-w-40 rounded-lg border border-border bg-background p-1 shadow-md">
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
@@ -453,57 +462,83 @@ function PatientDetailPage() {
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as "glucose" | "bp")}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <TabsList className="h-auto gap-0.5 rounded-md border border-border bg-transparent p-0.5">
               <TabsTrigger
                 value="glucose"
-                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[active]:bg-primary data-[active]:text-primary-foreground data-[active]:shadow-none"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-active:bg-primary data-active:text-primary-foreground data-active:shadow-none"
               >
                 Glucose
               </TabsTrigger>
               <TabsTrigger
                 value="bp"
-                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[active]:bg-primary data-[active]:text-primary-foreground data-[active]:shadow-none"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-active:bg-primary data-active:text-primary-foreground data-active:shadow-none"
               >
                 Blood Pressure
               </TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
-              {(["mg/dL", "mmol/L"] as const).map((u) => (
+              {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
                 <button
-                  key={u}
+                  key={r}
                   type="button"
-                  onClick={() => setDisplayUnit(u)}
+                  onClick={() => setRange(r)}
                   className={cn(
                     "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                    displayUnit === u
+                    range === r
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {u}
+                  {RANGE_LABELS[r]}
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
-            {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRange(r)}
-                className={cn(
-                  "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                  range === r
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {RANGE_LABELS[r]}
-              </button>
-            ))}
-          </div>
+
+          {activeTab === "glucose" && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                {(["mg/dL", "mmol/L"] as const).map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setDisplayUnit(u)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      displayUnit === u
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                {(
+                  Object.keys(
+                    GLUCOSE_CONTEXT_FILTER_LABELS
+                  ) as GlucoseContextFilter[]
+                ).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setGlucoseContextFilter(f)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      glucoseContextFilter === f
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {GLUCOSE_CONTEXT_FILTER_LABELS[f]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <TabsContent value="glucose">
@@ -517,6 +552,7 @@ function PatientDetailPage() {
                 thresholdOverrides={localThresholds}
                 displayUnit={displayUnit}
                 highlightedReadingId={highlightedReadingId}
+                contextFilter={glucoseContextFilter}
               />
             </CardContent>
           </Card>
