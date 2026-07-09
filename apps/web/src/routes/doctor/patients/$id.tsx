@@ -17,22 +17,15 @@ import { Input } from "@/components/input"
 import { Label } from "@/components/label"
 import { Textarea } from "@/components/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/table"
 import { Separator } from "@/components/separator"
 import { apiClient } from "@/lib/api-client"
 import type { components } from "@/lib/api.types"
-import { ReadingBadge } from "@/components/readings/ReadingBadge"
 import { ReadingForm } from "@/components/readings/ReadingForm"
 import type { ReadingBody } from "@/components/readings/ReadingForm"
 import { GlucoseChart } from "@/components/charts/GlucoseChart"
 import { BPChart } from "@/components/charts/BPChart"
+import { GlucoseHistoryTable } from "@/components/readings/GlucoseHistoryTable"
+import { BPHistoryTable } from "@/components/readings/BPHistoryTable"
 import {
   RiArrowLeftLine,
   RiDownloadLine,
@@ -42,16 +35,20 @@ import {
 } from "@remixicon/react"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
 import type { Thresholds } from "@/lib/thresholds"
-import { formatGlucose, mgdlToMmol, mmolToMgdl } from "@/lib/glucose"
+import { mgdlToMmol, mmolToMgdl } from "@/lib/glucose"
 import { cn } from "@/lib/utils"
 import { adaptReading } from "@/lib/readings"
 import { type TimeRange, RANGE_LABELS, rangeToFrom } from "@/lib/time-range"
+import {
+  toLocalDateStr,
+  toLocalTimeStr,
+  type ApiReading,
+} from "@/lib/reading-history"
 
 export const Route = createFileRoute("/doctor/patients/$id")({
   component: PatientDetailPage,
 })
 
-type ApiReading = components["schemas"]["Reading"]
 type ApiThresholds = components["schemas"]["Thresholds"]
 
 const MEAL_LABELS: Record<string, string> = {
@@ -84,14 +81,6 @@ function readingContext(r: {
   return parts.join(" · ")
 }
 
-function toLocalDateStr(d: Date): string {
-  return d.toLocaleDateString("en-TT", { month: "short", day: "numeric" })
-}
-
-function toLocalTimeStr(d: Date): string {
-  return d.toLocaleTimeString("en-TT", { hour: "2-digit", minute: "2-digit" })
-}
-
 function PatientDetailPage() {
   const { id: patientId } = Route.useParams()
   const navigate = useNavigate()
@@ -105,6 +94,10 @@ function PatientDetailPage() {
   const [exportOpen, setExportOpen] = useState(false)
   const [displayUnit, setDisplayUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
   const [range, setRange] = useState<TimeRange>("month")
+  const [activeTab, setActiveTab] = useState<"glucose" | "bp">("glucose")
+  const [highlightedReadingId, setHighlightedReadingId] = useState<
+    string | null
+  >(null)
 
   const { data: prefsData } = useQuery({
     queryKey: ["preferences"],
@@ -218,6 +211,12 @@ function PatientDetailPage() {
   const allReadings = apiReadings.map(adaptReading)
   const alerts = allReadings.filter((r) => r.severity === "high")
   const patientName = `${patient.firstName} ${patient.lastName}`
+
+  function openNoteDialog(r: ApiReading) {
+    setNoteTarget(r)
+    setNoteText(r.notes ?? "")
+    setNoteOpen(true)
+  }
 
   function handleSaveNote() {
     if (!noteTarget || !noteText.trim()) return
@@ -450,19 +449,22 @@ function PatientDetailPage() {
         )}
       </div>
 
-      <Tabs defaultValue="glucose">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "glucose" | "bp")}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <TabsList className="h-auto gap-0.5 rounded-md border border-border bg-transparent p-0.5">
               <TabsTrigger
                 value="glucose"
-                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[active]:bg-primary data-[active]:text-primary-foreground data-[active]:shadow-none"
               >
                 Glucose
               </TabsTrigger>
               <TabsTrigger
                 value="bp"
-                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[active]:bg-primary data-[active]:text-primary-foreground data-[active]:shadow-none"
               >
                 Blood Pressure
               </TabsTrigger>
@@ -514,6 +516,7 @@ function PatientDetailPage() {
                 readings={allReadings}
                 thresholdOverrides={localThresholds}
                 displayUnit={displayUnit}
+                highlightedReadingId={highlightedReadingId}
               />
             </CardContent>
           </Card>
@@ -529,6 +532,7 @@ function PatientDetailPage() {
               <BPChart
                 readings={allReadings}
                 thresholdOverrides={localThresholds}
+                highlightedReadingId={highlightedReadingId}
               />
             </CardContent>
           </Card>
@@ -542,75 +546,19 @@ function PatientDetailPage() {
           Reading history
         </h2>
 
-        {allReadings.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No readings logged yet.
-          </div>
+        {activeTab === "glucose" ? (
+          <GlucoseHistoryTable
+            readings={apiReadings.filter((r) => r.type === "glucose")}
+            displayUnit={displayUnit}
+            onEditNote={openNoteDialog}
+            onHoverReading={setHighlightedReadingId}
+          />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Context</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiReadings.map((r) => {
-                const d = new Date(r.timestamp)
-                const valueStr =
-                  r.type === "blood_pressure"
-                    ? `${r.value1}/${r.value2 ?? "?"} mmHg`
-                    : formatGlucose(r.value1, displayUnit)
-
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-xs">
-                      {toLocalDateStr(d)}
-                      <br />
-                      <span className="text-muted-foreground">
-                        {toLocalTimeStr(d)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs capitalize">
-                      {r.type === "blood_pressure"
-                        ? "Blood pressure"
-                        : "Glucose"}
-                    </TableCell>
-                    <TableCell className="text-xs font-medium">
-                      {valueStr}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {readingContext(r)}
-                    </TableCell>
-                    <TableCell>
-                      <ReadingBadge severity={r.severity} />
-                    </TableCell>
-                    <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
-                      {r.notes ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => {
-                          setNoteTarget(r)
-                          setNoteText(r.notes ?? "")
-                          setNoteOpen(true)
-                        }}
-                      >
-                        {r.notes ? "Edit note" : "Add note"}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          <BPHistoryTable
+            readings={apiReadings.filter((r) => r.type === "blood_pressure")}
+            onEditNote={openNoteDialog}
+            onHoverReading={setHighlightedReadingId}
+          />
         )}
       </div>
 

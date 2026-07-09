@@ -572,7 +572,7 @@ export function ReadingForm({
         <Label htmlFor="notes">Notes (optional)</Label>
         <Textarea
           id="notes"
-          placeholder="Any relevant context..."
+          placeholder="Add your meal or anything relevant"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
