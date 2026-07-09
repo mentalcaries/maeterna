@@ -16,18 +16,38 @@ REST API for Maeterna, built on [Hono](https://hono.dev/) and deployed to Cloudf
 ## Running locally
 
 ```bash
-pnpm run dev          # wrangler dev --remote, http://localhost:8787
+pnpm run dev          # wrangler dev, http://localhost:8787 — runs against LOCAL D1 (Miniflare) by default
 ```
 
-Needs a `.dev.vars` file (gitignored) with the Cloudflare credentials Drizzle Kit needs to talk to D1:
+Copy `.dev.vars.example` to `.dev.vars` (gitignored) and fill in real values — Drizzle Kit needs the `CLOUDFLARE_*` credentials to talk to the remote D1 database (for `db:generate`/`db:migrate`/`db:studio` only), and the Worker itself needs the rest (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FRONTEND_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SUPER_ADMIN_EMAIL`).
 
-```
-CLOUDFLARE_ACCOUNT_ID=...
-CLOUDFLARE_D1_DATABASE_ID=...
-CLOUDFLARE_D1_TOKEN=...
+## Local dev seed data
+
+```bash
+pnpm db:seed:local    # populate the LOCAL D1 database with test patients/doctors — safe to re-run
 ```
 
-The Worker itself needs these bound as secrets/vars in `wrangler.jsonc` / via `wrangler secret put`: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FRONTEND_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SUPER_ADMIN_EMAIL`.
+Seeds two doctors and five patients. Patients A–D each get roughly a month of dated readings (a handful of hand-crafted "anchor" rows for specific correctness cases, plus a generated background — each glucose slot (fasted/breakfast/lunch/dinner) and BP slot (AM/PM) has its own independent day filter, so patients differ in _both_ how many days they log and how many slots they complete per day) covering normal/high severity for both glucose and blood pressure; patient C has a custom per-patient threshold. An access grant gives the verified doctor visibility into every seeded patient. Every account is loggable-in via the normal magic-link flow — see [Local login without real email](#local-login-without-real-email) below.
+
+| Role                | Email                         | Scenario                                                                                                                                                                                                     |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Doctor (verified)   | `doctor.verified@seed.test`   | Has access to all seeded patients                                                                                                                                                                            |
+| Doctor (unverified) | `doctor.unverified@seed.test` | `pending_verification` — exercises the verification-gated redirect                                                                                                                                           |
+| Patient A           | `patient.a@seed.test`         | Ideal / disciplined — logs fasted + breakfast + lunch + dinner + BP AM/PM (up to 6 readings) on ~90% of days, values stay comfortably normal                                                                 |
+| Patient B           | `patient.b@seed.test`         | Uncontrolled — frequently high readings; logs fasted often but skips individual meals/BP inconsistently, same-slot glucose and BP collisions on one day, plus one very old reading for the "All time" filter |
+| Patient C           | `patient.c@seed.test`         | Custom (looser) thresholds, moderate logging — values hover near her personal cutoffs, so severity visibly depends on the override                                                                           |
+| Patient D           | `patient.d@seed.test`         | No threshold row, least disciplined of A–D — sparser logging across all slots, natural normal/high mix under default thresholds                                                                              |
+| Patient E           | `patient.e@seed.test`         | Sparse data — a single reading, plus a pair straddling a meal-slot boundary                                                                                                                                  |
+
+Source of truth for these values is `seed/seed.sql` — if it changes, this table should too. The script is idempotent: it deletes every row it owns (all ids/emails are prefixed `seed-`/`@seed.test`) before re-inserting, so running it repeatedly never duplicates data. It only ever targets the local D1 instance (`wrangler d1 execute maeterna --local`) — never pass `--remote`.
+
+### Local login without real email
+
+`sendMagicLink` in `src/lib/auth.ts` has a dev-only override, gated on two env vars that only ever exist in `.dev.vars` (never in production):
+
+1. Request a magic link from the login page for any seeded (or manually created) account.
+2. With `LOCAL_EMAIL_MODE=console` (the default in `.dev.vars.example`), the link is printed to the `wrangler dev` terminal instead of being emailed — copy it into your browser.
+3. To test real email delivery instead, set `LOCAL_EMAIL_MODE=send` in your own `.dev.vars` and use a real inbox you control as that account's email (a per-developer override — don't change the checked-in seed emails).
 
 ## Database (Drizzle + D1)
 

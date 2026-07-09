@@ -41,6 +41,16 @@ export function getAuth(env: CloudflareBindings) {
         expiresIn: 600,
         allowedAttempts: 3,
         sendMagicLink: async ({ email, url }) => {
+          // Layer 1: only ever true when running via `wrangler dev` locally
+          // (LOCAL_DEV_ONLY_SIGNAL lives in .dev.vars only — never a prod var
+          // or secret). Layer 2 is only consulted once layer 1 is true, so a
+          // deployed environment can never skip the real send.
+          const isLocalDev = Boolean(env.LOCAL_DEV_ONLY_SIGNAL)
+          if (isLocalDev && env.LOCAL_EMAIL_MODE !== "send") {
+            console.log(`[magic link] ${email} -> ${url}`)
+            return
+          }
+
           const resend = new Resend(env.RESEND_API_KEY)
           const { subject, html, text } = magicLinkEmail(url, env.FRONTEND_URL)
           await resend.emails.send({

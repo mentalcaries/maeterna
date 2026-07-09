@@ -10,4 +10,7 @@ interface CloudflareBindings {
   RESEND_API_KEY: string
   RESEND_FROM_EMAIL: string
   SUPER_ADMIN_EMAIL: string
+  // Local dev only — set in .dev.vars, never in production. See src/lib/auth.ts.
+  LOCAL_DEV_ONLY_SIGNAL?: string
+  LOCAL_EMAIL_MODE?: string
 }
