@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm run dev        # Start local dev server via wrangler dev (localhost:8787)
 pnpm run deploy     # Deploy to Cloudflare Workers (minified)
 pnpm run cf-typegen # Regenerate CloudflareBindings type from wrangler.jsonc
+pnpm db:seed:local  # Populate the local D1 database with test patients/doctors — see README.md#local-dev-seed-data
 ```
 
 Drizzle (run from `apps/api`; env vars are loaded automatically from `.dev.vars` via `drizzle.config.ts`):
