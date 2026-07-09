@@ -143,39 +143,29 @@ export const reading = sqliteTable("reading", {
   value1: real("value1").notNull(),
   value2: real("value2"),
   unit: text("unit").notNull(),
-  context: text("context").notNull(),
+  context: text("context", {
+    enum: ["fasted", "post_meal", "morning", "evening"],
+  }).notNull(),
   notes: text("notes"),
   timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
-  severity: text("severity", {
-    enum: ["normal", "warning", "critical"],
-  }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 })
 
-export const threshold = sqliteTable(
-  "threshold",
-  {
-    id: text("id").primaryKey(),
-    patientId: text("patient_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    doctorId: text("doctor_id")
-      .notNull()
-      .references(() => user.id),
-    fastingGlucoseWarning: real("fasting_glucose_warning").notNull(),
-    fastingGlucoseCritical: real("fasting_glucose_critical").notNull(),
-    postMealGlucoseWarning: real("post_meal_glucose_warning").notNull(),
-    postMealGlucoseCritical: real("post_meal_glucose_critical").notNull(),
-    systolicWarning: real("systolic_warning").notNull(),
-    systolicCritical: real("systolic_critical").notNull(),
-    diastolicWarning: real("diastolic_warning").notNull(),
-    diastolicCritical: real("diastolic_critical").notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-  },
-  (t) => [
-    uniqueIndex("threshold_patient_doctor_idx").on(t.patientId, t.doctorId),
-  ]
-)
+export const threshold = sqliteTable("threshold", {
+  id: text("id").primaryKey(),
+  patientId: text("patient_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  doctorId: text("doctor_id")
+    .notNull()
+    .references(() => user.id), // last updated by — attribution only
+  fastingGlucoseHigh: real("fasting_glucose_high").notNull(),
+  postMealGlucoseHigh: real("post_meal_glucose_high").notNull(),
+  systolicHigh: real("systolic_high").notNull(),
+  diastolicHigh: real("diastolic_high").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+})
 
 export const accessGrant = sqliteTable("access_grant", {
   id: text("id").primaryKey(),

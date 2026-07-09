@@ -31,12 +31,11 @@ function readingSubtitle(r: Reading): string {
   if (r.timeOfDay) {
     parts.push(TIME_LABELS[r.timeOfDay] ?? r.timeOfDay)
   } else if (!r.mealContext) {
-    // legacy seed data fallback
     const legacy: Record<string, string> = {
-      fasting: "Fasting",
+      fasted: "Fasted",
       post_meal: "After eating",
       morning: "Morning",
-      before_bed: "Night",
+      evening: "Night",
     }
     parts.push(legacy[r.context] ?? r.context)
   }
@@ -89,9 +88,7 @@ export function ReadingList({
               <span
                 className={cn(
                   "mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full",
-                  !r.severity && "bg-green-500",
-                  r.severity === "warning" && "bg-amber-400",
-                  r.severity === "critical" && "bg-red-500"
+                  r.severity === "high" ? "bg-red-500" : "bg-green-500"
                 )}
               />
             </div>

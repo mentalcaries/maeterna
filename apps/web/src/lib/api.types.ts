@@ -28,6 +28,7 @@ export interface paths {
       requestBody: {
         content: {
           "application/json": {
+            /** @enum {string} */
             role: "patient" | "doctor"
           }
         }
@@ -35,17 +36,59 @@ export interface paths {
       responses: {
         /** @description Role set */
         200: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": { role: string } }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": {
+              role: string
+            }
+          }
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
         /** @description Role already set */
         409: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
-        401: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
       }
     }
@@ -162,22 +205,124 @@ export interface paths {
       responses: {
         /** @description Submitted for review */
         200: {
-          headers: { [name: string]: unknown }
+          headers: {
+            [name: string]: unknown
+          }
           content: {
             "application/json": components["schemas"]["Doctor"]
           }
         }
+        /** @description Missing or invalid session token */
         401: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
+        /** @description Authenticated but insufficient permissions */
         403: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
       }
     }
     delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/profile/doctor/affiliations/{affiliationId}": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Remove a single doctor affiliation */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          affiliationId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Affiliation deleted */
+        204: {
+          headers: {
+            [name: string]: unknown
+          }
+          content?: never
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
     options?: never
     head?: never
     patch?: never
@@ -261,64 +406,6 @@ export interface paths {
     }
     post?: never
     delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/profile/doctor/affiliations/{affiliationId}": {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** Format: uuid */
-        affiliationId: string
-      }
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    post?: never
-    /** Remove a single doctor affiliation */
-    delete: {
-      parameters: {
-        query?: never
-        header?: never
-        path: {
-          /** Format: uuid */
-          affiliationId: string
-        }
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        /** @description Affiliation deleted */
-        204: {
-          headers: {
-            [name: string]: unknown
-          }
-          content?: never
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
     options?: never
     head?: never
     patch?: never
@@ -526,6 +613,7 @@ export interface paths {
       parameters: {
         query?: {
           type?: "glucose" | "blood_pressure"
+          from?: string
           limit?: number
           offset?: number | null
         }
@@ -596,18 +684,32 @@ export interface paths {
       }
       requestBody: {
         content: {
-          "application/json": {
-            /** @enum {string} */
-            type: "glucose" | "blood_pressure"
-            value1: number
-            value2?: number | null
-            /** @enum {string} */
-            unit: "mg/dL" | "mmol/L" | "mmHg"
-            context: string
-            notes?: string | null
-            /** Format: date-time */
-            timestamp: string
-          }
+          "application/json":
+            | {
+                /** @enum {string} */
+                type: "glucose"
+                value1: number
+                /** @enum {string} */
+                unit: "mg/dL" | "mmol/L"
+                /** @enum {string} */
+                context: "fasted" | "post_meal"
+                notes?: string | null
+                /** Format: date-time */
+                timestamp: string
+              }
+            | {
+                /** @enum {string} */
+                type: "blood_pressure"
+                value1: number
+                value2: number
+                /** @enum {string} */
+                unit: "mmHg"
+                /** @enum {string} */
+                context: "morning" | "evening"
+                notes?: string | null
+                /** Format: date-time */
+                timestamp: string
+              }
         }
       }
       responses: {
@@ -685,18 +787,32 @@ export interface paths {
       }
       requestBody: {
         content: {
-          "application/json": {
-            /** @enum {string} */
-            type: "glucose" | "blood_pressure"
-            value1: number
-            value2?: number | null
-            /** @enum {string} */
-            unit: "mg/dL" | "mmol/L" | "mmHg"
-            context: string
-            notes?: string | null
-            /** Format: date-time */
-            timestamp: string
-          }
+          "application/json":
+            | {
+                /** @enum {string} */
+                type: "glucose"
+                value1: number
+                /** @enum {string} */
+                unit: "mg/dL" | "mmol/L"
+                /** @enum {string} */
+                context: "fasted" | "post_meal"
+                notes?: string | null
+                /** Format: date-time */
+                timestamp: string
+              }
+            | {
+                /** @enum {string} */
+                type: "blood_pressure"
+                value1: number
+                value2: number
+                /** @enum {string} */
+                unit: "mmHg"
+                /** @enum {string} */
+                context: "morning" | "evening"
+                notes?: string | null
+                /** Format: date-time */
+                timestamp: string
+              }
         }
       }
       responses: {
@@ -911,7 +1027,6 @@ export interface paths {
           "application/json": {
             /** @enum {string} */
             grantType: "individual" | "department"
-            /** Format: uuid */
             granteeId: string
           }
         }
@@ -1156,7 +1271,6 @@ export interface paths {
           }
           content: {
             "application/json": {
-              /** Format: uuid */
               doctorId: string
               doctorName: string
               affiliations: components["schemas"]["DoctorAffiliation"][]
@@ -1394,6 +1508,24 @@ export interface paths {
             "application/json": components["schemas"]["Error"]
           }
         }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
       }
     }
     trace?: never
@@ -1485,7 +1617,9 @@ export interface paths {
     /** Get a patient's full detail */
     get: {
       parameters: {
-        query?: never
+        query?: {
+          from?: string
+        }
         header?: never
         path: {
           patientId: string
@@ -2147,6 +2281,156 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/admin/sync-mbtt": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Manually trigger MBTT registry sync */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Sync complete */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": {
+              syncedAt: string
+              count: number
+            }
+          }
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/admin/sync-mbtt/status": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get current MBTT registry sync status */
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Registry status */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": {
+              lastSyncedAt: string | null
+              count: number
+            }
+          }
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/admin/audit-log": {
     parameters: {
       query?: never
@@ -2225,88 +2509,6 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  "/admin/sync-mbtt": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Trigger MBTT registry sync */
-    post: {
-      parameters: {
-        query?: never
-        header?: never
-        path?: never
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        200: {
-          headers: { [name: string]: unknown }
-          content: {
-            "application/json": { syncedAt: string; count: number }
-          }
-        }
-        401: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
-        }
-        403: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
-        }
-      }
-    }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/admin/sync-mbtt/status": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Get MBTT sync status */
-    get: {
-      parameters: {
-        query?: never
-        header?: never
-        path?: never
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        200: {
-          headers: { [name: string]: unknown }
-          content: {
-            "application/json": { lastSyncedAt: string | null; count: number }
-          }
-        }
-        401: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
-        }
-        403: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
-        }
-      }
-    }
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   "/preferences": {
     parameters: {
       query?: never
@@ -2324,15 +2526,50 @@ export interface paths {
       }
       requestBody?: never
       responses: {
+        /** @description User preferences */
         200: {
-          headers: { [name: string]: unknown }
+          headers: {
+            [name: string]: unknown
+          }
           content: {
             "application/json": components["schemas"]["UserPreferences"]
           }
         }
+        /** @description Missing or invalid session token */
         401: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
       }
     }
@@ -2358,19 +2595,50 @@ export interface paths {
         }
       }
       responses: {
+        /** @description Updated preferences */
         200: {
-          headers: { [name: string]: unknown }
+          headers: {
+            [name: string]: unknown
+          }
           content: {
             "application/json": components["schemas"]["UserPreferences"]
           }
         }
+        /** @description Missing or invalid session token */
         401: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
         422: {
-          headers: { [name: string]: unknown }
-          content: { "application/json": components["schemas"]["Error"] }
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
         }
       }
     }
@@ -2380,6 +2648,10 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    Error: {
+      code: string
+      message: string
+    }
     Patient: {
       /** Format: uuid */
       id: string
@@ -2413,9 +2685,6 @@ export interface components {
       /** Format: date-time */
       createdAt: string
     }
-    DoctorVerificationFailed: {
-      verificationFailed: true
-    }
     DoctorAffiliation: {
       /** Format: uuid */
       id: string
@@ -2426,9 +2695,9 @@ export interface components {
       departmentId: string
       departmentName: string
     }
-    Error: {
-      code: string
-      message: string
+    DoctorVerificationFailed: {
+      /** @enum {boolean} */
+      verificationFailed: true
     }
     Reading: {
       /** Format: uuid */
@@ -2442,12 +2711,13 @@ export interface components {
       value1: number
       value2: number | null
       unit: string
-      context: string
+      /** @enum {string} */
+      context: "fasted" | "post_meal" | "morning" | "evening"
       notes: string | null
       /** Format: date-time */
       timestamp: string
       /** @enum {string} */
-      severity: "normal" | "warning" | "critical"
+      severity: "normal" | "high"
       /** Format: date-time */
       createdAt: string
     }
@@ -2493,14 +2763,10 @@ export interface components {
       name: string
     }
     Thresholds: {
-      fastingGlucoseWarning: number
-      fastingGlucoseCritical: number
-      postMealGlucoseWarning: number
-      postMealGlucoseCritical: number
-      systolicWarning: number
-      systolicCritical: number
-      diastolicWarning: number
-      diastolicCritical: number
+      fastingGlucoseHigh: number
+      postMealGlucoseHigh: number
+      systolicHigh: number
+      diastolicHigh: number
     }
     Invite: {
       /** Format: uuid */

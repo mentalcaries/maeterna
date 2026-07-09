@@ -10,6 +10,9 @@ const config = defineConfig({
     tailwindcss(),
     viteReact(),
   ]),
+  test: {
+    include: ["src/**/*.test.ts"],
+  },
 })
 
 export default config

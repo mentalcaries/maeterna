@@ -43,6 +43,13 @@
       "when": 1782934090603,
       "tag": "0005_true_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1783555868646,
+      "tag": "0006_rare_fixer",
+      "breakpoints": true
     }
   ]
 }

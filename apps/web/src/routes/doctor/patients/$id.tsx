@@ -1,8 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import * as XLSX from "xlsx"
-import { jsPDF } from "jspdf"
 import { Button } from "@/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import { Badge } from "@/components/badge"
@@ -17,22 +15,15 @@ import { Input } from "@/components/input"
 import { Label } from "@/components/label"
 import { Textarea } from "@/components/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/table"
 import { Separator } from "@/components/separator"
 import { apiClient } from "@/lib/api-client"
 import type { components } from "@/lib/api.types"
-import { ReadingBadge } from "@/components/readings/ReadingBadge"
 import { ReadingForm } from "@/components/readings/ReadingForm"
 import type { ReadingBody } from "@/components/readings/ReadingForm"
 import { GlucoseChart } from "@/components/charts/GlucoseChart"
 import { BPChart } from "@/components/charts/BPChart"
+import { GlucoseHistoryTable } from "@/components/readings/GlucoseHistoryTable"
+import { BPHistoryTable } from "@/components/readings/BPHistoryTable"
 import {
   RiArrowLeftLine,
   RiDownloadLine,
@@ -41,97 +32,26 @@ import {
   RiFilePdfLine,
 } from "@remixicon/react"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
-import type { Thresholds, AlertSeverity } from "@/lib/thresholds"
-import { formatGlucose } from "@/lib/glucose"
+import type { Thresholds } from "@/lib/thresholds"
+import { mgdlToMmol, mmolToMgdl } from "@/lib/glucose"
 import { cn } from "@/lib/utils"
-import type { Reading } from "@/mock/db"
+import { adaptReading } from "@/lib/readings"
+import { type TimeRange, RANGE_LABELS, rangeToFrom } from "@/lib/time-range"
+import type { ApiReading } from "@/lib/reading-history"
+import { exportReadingsToExcel } from "@/lib/export-excel"
+import { exportReadingsToPDF } from "@/lib/export-pdf"
 
 export const Route = createFileRoute("/doctor/patients/$id")({
   component: PatientDetailPage,
 })
 
-type ApiReading = components["schemas"]["Reading"]
 type ApiThresholds = components["schemas"]["Thresholds"]
 
-function adaptReading(r: ApiReading): Reading {
-  return {
-    id: r.id,
-    patientId: r.patientId,
-    loggedById: r.loggedById,
-    type: r.type,
-    value1: r.value1,
-    value2: r.value2 ?? undefined,
-    unit: r.unit,
-    context: r.context as import("@/mock/db").ReadingContext,
-    notes: r.notes ?? undefined,
-    timestamp: r.timestamp,
-    severity:
-      r.severity === "normal" ? undefined : (r.severity as AlertSeverity),
-  }
-}
-
-function apiThresholdsToLocal(t: ApiThresholds): Thresholds {
-  return {
-    fasting_glucose_warning: t.fastingGlucoseWarning,
-    fasting_glucose_critical: t.fastingGlucoseCritical,
-    postmeal_glucose_warning: t.postMealGlucoseWarning,
-    postmeal_glucose_critical: t.postMealGlucoseCritical,
-    systolic_warning: t.systolicWarning,
-    systolic_critical: t.systolicCritical,
-    diastolic_warning: t.diastolicWarning,
-    diastolic_critical: t.diastolicCritical,
-  }
-}
-
-function localThresholdsToApi(t: Thresholds): ApiThresholds {
-  return {
-    fastingGlucoseWarning: t.fasting_glucose_warning,
-    fastingGlucoseCritical: t.fasting_glucose_critical,
-    postMealGlucoseWarning: t.postmeal_glucose_warning,
-    postMealGlucoseCritical: t.postmeal_glucose_critical,
-    systolicWarning: t.systolic_warning,
-    systolicCritical: t.systolic_critical,
-    diastolicWarning: t.diastolic_warning,
-    diastolicCritical: t.diastolic_critical,
-  }
-}
-
-const MEAL_LABELS: Record<string, string> = {
+type GlucoseContextFilter = "all" | "fasted" | "post_meal"
+const GLUCOSE_CONTEXT_FILTER_LABELS: Record<GlucoseContextFilter, string> = {
+  all: "All",
   fasted: "Fasted",
-  post_meal: "After eating",
-}
-const TIME_LABELS: Record<string, string> = {
-  morning: "Morning",
-  afternoon: "Afternoon",
-  evening: "Evening",
-  before_bed: "Night",
-  at_clinic: "At clinic",
-}
-const CONTEXT_LABELS: Record<string, string> = {
-  fasting: "Fasting",
-  post_meal: "After eating",
-  morning: "Morning",
-  before_bed: "Night",
-}
-
-function readingContext(r: {
-  context: string
-  mealContext?: string
-  timeOfDay?: string
-}): string {
-  const parts: string[] = []
-  if (r.mealContext) parts.push(MEAL_LABELS[r.mealContext] ?? r.mealContext)
-  if (r.timeOfDay) parts.push(TIME_LABELS[r.timeOfDay] ?? r.timeOfDay)
-  if (parts.length === 0) parts.push(CONTEXT_LABELS[r.context] ?? r.context)
-  return parts.join(" · ")
-}
-
-function toLocalDateStr(d: Date): string {
-  return d.toLocaleDateString("en-TT", { month: "short", day: "numeric" })
-}
-
-function toLocalTimeStr(d: Date): string {
-  return d.toLocaleTimeString("en-TT", { hour: "2-digit", minute: "2-digit" })
+  post_meal: "Post-meal",
 }
 
 function PatientDetailPage() {
@@ -146,6 +66,13 @@ function PatientDetailPage() {
   const [thresholdOpen, setThresholdOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [displayUnit, setDisplayUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
+  const [range, setRange] = useState<TimeRange>("month")
+  const [activeTab, setActiveTab] = useState<"glucose" | "bp">("glucose")
+  const [glucoseContextFilter, setGlucoseContextFilter] =
+    useState<GlucoseContextFilter>("all")
+  const [highlightedReadingId, setHighlightedReadingId] = useState<
+    string | null
+  >(null)
 
   const { data: prefsData } = useQuery({
     queryKey: ["preferences"],
@@ -159,10 +86,10 @@ function PatientDetailPage() {
   }, [prefsData])
 
   const { data: patientDetail, isPending } = useQuery({
-    queryKey: ["patient", patientId],
+    queryKey: ["patient", patientId, range],
     queryFn: async () => {
       const res = await apiClient.GET("/doctors/me/patients/{patientId}", {
-        params: { path: { patientId } },
+        params: { path: { patientId }, query: { from: rangeToFrom(range) } },
       })
       return res.data ?? null
     },
@@ -170,24 +97,19 @@ function PatientDetailPage() {
 
   const patient = patientDetail?.patient
   const apiReadings = patientDetail?.readings ?? []
-  const apiThresholds = patientDetail?.thresholds ?? null
-  const localThresholds = apiThresholds
-    ? apiThresholdsToLocal(apiThresholds)
-    : DEFAULT_THRESHOLDS
+  const localThresholds: Thresholds =
+    patientDetail?.thresholds ?? DEFAULT_THRESHOLDS
+  const isCustomThresholds = (
+    Object.keys(DEFAULT_THRESHOLDS) as (keyof Thresholds)[]
+  ).some((key) => localThresholds[key] !== DEFAULT_THRESHOLDS[key])
 
   const [thresholdForm, setThresholdForm] = useState<
     Record<keyof Thresholds, string>
   >(() => ({
-    fasting_glucose_warning: String(localThresholds.fasting_glucose_warning),
-    fasting_glucose_critical: String(localThresholds.fasting_glucose_critical),
-    postmeal_glucose_warning: String(localThresholds.postmeal_glucose_warning),
-    postmeal_glucose_critical: String(
-      localThresholds.postmeal_glucose_critical
-    ),
-    systolic_warning: String(localThresholds.systolic_warning),
-    systolic_critical: String(localThresholds.systolic_critical),
-    diastolic_warning: String(localThresholds.diastolic_warning),
-    diastolic_critical: String(localThresholds.diastolic_critical),
+    fastingGlucoseHigh: String(localThresholds.fastingGlucoseHigh),
+    postMealGlucoseHigh: String(localThresholds.postMealGlucoseHigh),
+    systolicHigh: String(localThresholds.systolicHigh),
+    diastolicHigh: String(localThresholds.diastolicHigh),
   }))
 
   const noteMutation = useMutation({
@@ -262,8 +184,14 @@ function PatientDetailPage() {
   }
 
   const allReadings = apiReadings.map(adaptReading)
-  const alerts = allReadings.filter((r) => r.severity !== undefined)
+  const alerts = allReadings.filter((r) => r.severity === "high")
   const patientName = `${patient.firstName} ${patient.lastName}`
+
+  function openNoteDialog(r: ApiReading) {
+    setNoteTarget(r)
+    setNoteText(r.notes ?? "")
+    setNoteOpen(true)
+  }
 
   function handleSaveNote() {
     if (!noteTarget || !noteText.trim()) return
@@ -271,152 +199,30 @@ function PatientDetailPage() {
   }
 
   function handleSaveThresholds() {
-    const parsed: Thresholds = {
-      fasting_glucose_warning: parseFloat(
-        thresholdForm.fasting_glucose_warning
+    const toMgdl = (v: number) => (displayUnit === "mmol/L" ? mmolToMgdl(v) : v)
+    thresholdMutation.mutate({
+      fastingGlucoseHigh: toMgdl(parseFloat(thresholdForm.fastingGlucoseHigh)),
+      postMealGlucoseHigh: toMgdl(
+        parseFloat(thresholdForm.postMealGlucoseHigh)
       ),
-      fasting_glucose_critical: parseFloat(
-        thresholdForm.fasting_glucose_critical
-      ),
-      postmeal_glucose_warning: parseFloat(
-        thresholdForm.postmeal_glucose_warning
-      ),
-      postmeal_glucose_critical: parseFloat(
-        thresholdForm.postmeal_glucose_critical
-      ),
-      systolic_warning: parseFloat(thresholdForm.systolic_warning),
-      systolic_critical: parseFloat(thresholdForm.systolic_critical),
-      diastolic_warning: parseFloat(thresholdForm.diastolic_warning),
-      diastolic_critical: parseFloat(thresholdForm.diastolic_critical),
-    }
-    thresholdMutation.mutate(localThresholdsToApi(parsed))
+      systolicHigh: parseFloat(thresholdForm.systolicHigh),
+      diastolicHigh: parseFloat(thresholdForm.diastolicHigh),
+    })
   }
 
   function handleExportExcel() {
     setExportOpen(false)
-    const rows = allReadings.map((r) => {
-      const d = new Date(r.timestamp)
-      return {
-        Date: toLocalDateStr(d),
-        Time: toLocalTimeStr(d),
-        Type: r.type === "blood_pressure" ? "Blood Pressure" : "Glucose",
-        Value:
-          r.type === "blood_pressure"
-            ? `${r.value1}/${r.value2 ?? "?"}`
-            : String(r.value1),
-        Unit: r.type === "blood_pressure" ? "mmHg" : displayUnit,
-        Context: readingContext(r),
-        Notes: r.notes ?? "",
-        Status: r.severity ?? "Normal",
-      }
-    })
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Readings")
-    XLSX.writeFile(wb, `${patientName.replace(/\s+/g, "_")}_readings.xlsx`)
+    exportReadingsToExcel(allReadings, patientName, displayUnit)
   }
 
   function handleExportPDF() {
     setExportOpen(false)
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    })
-
-    doc.setFontSize(12)
-    doc.setFont("helvetica", "bold")
-    doc.text(`${patientName} — Reading History`, 14, 12)
-    doc.setFontSize(8)
-    doc.setFont("helvetica", "normal")
-    doc.text(`Exported ${new Date().toLocaleDateString("en-TT")}`, 14, 18)
-
-    const headers = [
-      "Date",
-      "Time",
-      "Type",
-      "Value",
-      "Unit",
-      "Context",
-      "Notes",
-      "Status",
-    ]
-    const colW = [24, 15, 30, 22, 14, 36, 82, 18]
-    const totalW = colW.reduce((a, b) => a + b, 0)
-    const startX = 14
-    const rowH = 6.5
-    const pageH = 200
-
-    function drawHeader(yPos: number) {
-      doc.setFillColor(243, 244, 246)
-      doc.rect(startX, yPos, totalW, rowH, "F")
-      doc.setFontSize(7)
-      doc.setFont("helvetica", "bold")
-      let x = startX
-      headers.forEach((h, i) => {
-        doc.text(h, x + 1.5, yPos + 4.5)
-        x += colW[i]!
-      })
-    }
-
-    function fitText(text: string, maxW: number): string {
-      if (doc.getTextWidth(text) <= maxW) return text
-      let t = text
-      while (t.length > 0 && doc.getTextWidth(t + "…") > maxW) {
-        t = t.slice(0, -1)
-      }
-      return t + "…"
-    }
-
-    let y = 24
-    drawHeader(y)
-    y += rowH
-
-    allReadings.forEach((r, ri) => {
-      if (y + rowH > pageH) {
-        doc.addPage()
-        y = 14
-        drawHeader(y)
-        y += rowH
-      }
-
-      if (ri % 2 === 0) {
-        doc.setFillColor(249, 250, 251)
-        doc.rect(startX, y, totalW, rowH, "F")
-      }
-
-      const d = new Date(r.timestamp)
-      const cells = [
-        toLocalDateStr(d),
-        toLocalTimeStr(d),
-        r.type === "blood_pressure" ? "Blood Pressure" : "Glucose",
-        r.type === "blood_pressure"
-          ? `${r.value1}/${r.value2 ?? "?"}`
-          : String(r.value1),
-        r.type === "blood_pressure" ? "mmHg" : displayUnit,
-        readingContext(r),
-        r.notes ?? "",
-        r.severity ?? "Normal",
-      ]
-
-      doc.setFontSize(7)
-      doc.setFont("helvetica", "normal")
-      let x = startX
-      cells.forEach((cell, ci) => {
-        const maxW = colW[ci]! - 3
-        doc.text(fitText(cell, maxW), x + 1.5, y + 4.5)
-        x += colW[ci]!
-      })
-
-      y += rowH
-    })
-
-    doc.save(`${patientName.replace(/\s+/g, "_")}_readings.pdf`)
+    exportReadingsToPDF(allReadings, patientName, displayUnit)
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="sm"
@@ -425,132 +231,164 @@ function PatientDetailPage() {
           <RiArrowLeftLine className="mr-1 size-3.5" />
           All patients
         </Button>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setExportOpen((v) => !v)}
-            >
-              <RiDownloadLine className="mr-1 size-3.5" />
-              Export
-            </Button>
-            {exportOpen && (
-              <div className="absolute top-full right-0 z-10 mt-1 min-w-[160px] rounded-lg border border-border bg-background p-1 shadow-md">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-                  onClick={handleExportExcel}
-                >
-                  <RiFileExcel2Line className="size-4 text-green-600" />
-                  Export as Excel
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-                  onClick={handleExportPDF}
-                >
-                  <RiFilePdfLine className="size-4 text-red-500" />
-                  Export as PDF
-                </button>
-              </div>
-            )}
-          </div>
-          <Button size="sm" onClick={() => setLogOpen(true)}>
-            <RiAddLine className="mr-1 size-3.5" />
-            Log reading
-          </Button>
-        </div>
       </div>
 
       <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">{patientName}</h1>
-          {patient.status === "suspended" && (
-            <Badge variant="destructive">Suspended</Badge>
-          )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold">{patientName}</h1>
+            {patient.status === "suspended" && (
+              <Badge variant="destructive">Suspended</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const fromMgdl = (v: number) =>
+                  displayUnit === "mmol/L" ? mgdlToMmol(v) : v
+                setThresholdForm({
+                  fastingGlucoseHigh: String(
+                    fromMgdl(localThresholds.fastingGlucoseHigh)
+                  ),
+                  postMealGlucoseHigh: String(
+                    fromMgdl(localThresholds.postMealGlucoseHigh)
+                  ),
+                  systolicHigh: String(localThresholds.systolicHigh),
+                  diastolicHigh: String(localThresholds.diastolicHigh),
+                })
+                setThresholdOpen(true)
+              }}
+            >
+              Set thresholds
+            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setExportOpen((v) => !v)}
+              >
+                <RiDownloadLine className="mr-1 size-3.5" />
+                Export
+              </Button>
+              {exportOpen && (
+                <div className="absolute top-full right-0 z-10 mt-1 min-w-40 rounded-lg border border-border bg-background p-1 shadow-md">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+                    onClick={handleExportExcel}
+                  >
+                    <RiFileExcel2Line className="size-4 text-green-600" />
+                    Export as Excel
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+                    onClick={handleExportPDF}
+                  >
+                    <RiFilePdfLine className="size-4 text-red-500" />
+                    Export as PDF
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">{patient.email}</p>
+
         {alerts.length > 0 && (
           <div className="mt-1 flex items-center gap-2">
-            <Badge
-              variant={
-                alerts.some((r) => r.severity === "critical")
-                  ? "critical"
-                  : "warning"
-              }
-            >
-              {alerts.length} alert{alerts.length !== 1 ? "s" : ""}
+            <Badge variant="critical">
+              {alerts.length} flagged reading{alerts.length !== 1 ? "s" : ""}
             </Badge>
-            <span className="text-xs text-muted-foreground">
-              in reading history
-            </span>
           </div>
         )}
       </div>
 
-      <Tabs defaultValue="glucose">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "glucose" | "bp")}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <TabsList className="h-auto gap-0.5 rounded-md border border-border bg-transparent p-0.5">
               <TabsTrigger
                 value="glucose"
-                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-active:bg-primary data-active:text-primary-foreground data-active:shadow-none"
               >
                 Glucose
               </TabsTrigger>
               <TabsTrigger
                 value="bp"
-                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                className="rounded px-2.5 py-1 text-xs font-medium transition-colors data-active:bg-primary data-active:text-primary-foreground data-active:shadow-none"
               >
                 Blood Pressure
               </TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
-              {(["mg/dL", "mmol/L"] as const).map((u) => (
+              {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
                 <button
-                  key={u}
+                  key={r}
                   type="button"
-                  onClick={() => setDisplayUnit(u)}
+                  onClick={() => setRange(r)}
                   className={cn(
                     "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                    displayUnit === u
+                    range === r
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {u}
+                  {RANGE_LABELS[r]}
                 </button>
               ))}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => {
-              setThresholdForm({
-                fasting_glucose_warning: String(
-                  localThresholds.fasting_glucose_warning
-                ),
-                fasting_glucose_critical: String(
-                  localThresholds.fasting_glucose_critical
-                ),
-                postmeal_glucose_warning: String(
-                  localThresholds.postmeal_glucose_warning
-                ),
-                postmeal_glucose_critical: String(
-                  localThresholds.postmeal_glucose_critical
-                ),
-                systolic_warning: String(localThresholds.systolic_warning),
-                systolic_critical: String(localThresholds.systolic_critical),
-                diastolic_warning: String(localThresholds.diastolic_warning),
-                diastolic_critical: String(localThresholds.diastolic_critical),
-              })
-              setThresholdOpen(true)
-            }}
-          >
-            Set thresholds
-          </Button>
+
+          {activeTab === "glucose" && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                {/*
+                  The utility of this toggle is TBD. Unit wide changes can already be made in the Settings
+                
+                {(["mg/dL", "mmol/L"] as const).map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setDisplayUnit(u)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      displayUnit === u
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {u}
+                  </button>
+                ))} */}
+              </div>
+              <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                {(
+                  Object.keys(
+                    GLUCOSE_CONTEXT_FILTER_LABELS
+                  ) as GlucoseContextFilter[]
+                ).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setGlucoseContextFilter(f)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      glucoseContextFilter === f
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {GLUCOSE_CONTEXT_FILTER_LABELS[f]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <TabsContent value="glucose">
@@ -563,6 +401,8 @@ function PatientDetailPage() {
                 readings={allReadings}
                 thresholdOverrides={localThresholds}
                 displayUnit={displayUnit}
+                highlightedReadingId={highlightedReadingId}
+                contextFilter={glucoseContextFilter}
               />
             </CardContent>
           </Card>
@@ -578,6 +418,7 @@ function PatientDetailPage() {
               <BPChart
                 readings={allReadings}
                 thresholdOverrides={localThresholds}
+                highlightedReadingId={highlightedReadingId}
               />
             </CardContent>
           </Card>
@@ -587,83 +428,29 @@ function PatientDetailPage() {
       <Separator />
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-          Reading history
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+            Reading history
+          </h2>
+          <Button size="sm" onClick={() => setLogOpen(true)}>
+            <RiAddLine className="mr-1 size-3.5" />
+            Log Today's reading
+          </Button>
+        </div>
 
-        {allReadings.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No readings logged yet.
-          </div>
+        {activeTab === "glucose" ? (
+          <GlucoseHistoryTable
+            readings={apiReadings.filter((r) => r.type === "glucose")}
+            displayUnit={displayUnit}
+            onEditNote={openNoteDialog}
+            onHoverReading={setHighlightedReadingId}
+          />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Context</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiReadings.map((r) => {
-                const d = new Date(r.timestamp)
-                const valueStr =
-                  r.type === "blood_pressure"
-                    ? `${r.value1}/${r.value2 ?? "?"} mmHg`
-                    : formatGlucose(r.value1, displayUnit)
-                const severity =
-                  r.severity === "normal"
-                    ? undefined
-                    : (r.severity as AlertSeverity)
-
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-xs">
-                      {toLocalDateStr(d)}
-                      <br />
-                      <span className="text-muted-foreground">
-                        {toLocalTimeStr(d)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs capitalize">
-                      {r.type === "blood_pressure"
-                        ? "Blood pressure"
-                        : "Glucose"}
-                    </TableCell>
-                    <TableCell className="text-xs font-medium">
-                      {valueStr}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {readingContext(r)}
-                    </TableCell>
-                    <TableCell>
-                      <ReadingBadge severity={severity} />
-                    </TableCell>
-                    <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
-                      {r.notes ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => {
-                          setNoteTarget(r)
-                          setNoteText(r.notes ?? "")
-                          setNoteOpen(true)
-                        }}
-                      >
-                        {r.notes ? "Edit note" : "Add note"}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          <BPHistoryTable
+            readings={apiReadings.filter((r) => r.type === "blood_pressure")}
+            onEditNote={openNoteDialog}
+            onHoverReading={setHighlightedReadingId}
+          />
         )}
       </div>
 
@@ -690,17 +477,21 @@ function PatientDetailPage() {
           <DialogHeader>
             <DialogTitle>Alert thresholds — {patientName}</DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            {isCustomThresholds
+              ? "Showing this patient's custom thresholds."
+              : "Showing platform default thresholds."}
+          </p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {(
               [
-                ["Fasting glucose warn (mg/dL)", "fasting_glucose_warning"],
-                ["Fasting glucose crit (mg/dL)", "fasting_glucose_critical"],
-                ["Post-meal warn (mg/dL)", "postmeal_glucose_warning"],
-                ["Post-meal crit (mg/dL)", "postmeal_glucose_critical"],
-                ["Systolic warn (mmHg)", "systolic_warning"],
-                ["Systolic crit (mmHg)", "systolic_critical"],
-                ["Diastolic warn (mmHg)", "diastolic_warning"],
-                ["Diastolic crit (mmHg)", "diastolic_critical"],
+                [`Fasting glucose high (${displayUnit})`, "fastingGlucoseHigh"],
+                [
+                  `Post-meal glucose high (${displayUnit})`,
+                  "postMealGlucoseHigh",
+                ],
+                ["Systolic high (mmHg)", "systolicHigh"],
+                ["Diastolic high (mmHg)", "diastolicHigh"],
               ] as [string, keyof typeof thresholdForm][]
             ).map(([label, key]) => (
               <div key={key} className="flex flex-col gap-1">

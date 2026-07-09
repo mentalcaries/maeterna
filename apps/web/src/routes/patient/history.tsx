@@ -11,41 +11,28 @@ import {
   SelectValue,
 } from "@/components/select"
 import { Label } from "@/components/label"
-import type { Reading } from "@/mock/db"
-import type { components } from "@/lib/api.types"
+import { adaptReading } from "@/lib/readings"
+import { cn } from "@/lib/utils"
+import { type TimeRange, RANGE_LABELS, rangeToFrom } from "@/lib/time-range"
 
 export const Route = createFileRoute("/patient/history")({
   component: PatientHistoryPage,
 })
 
-function adaptReading(r: components["schemas"]["Reading"]): Reading {
-  return {
-    id: r.id,
-    patientId: r.patientId,
-    loggedById: r.loggedById,
-    type: r.type,
-    value1: r.value1,
-    value2: r.value2 ?? undefined,
-    unit: r.unit,
-    context: r.context as import("@/mock/db").ReadingContext,
-    notes: r.notes ?? undefined,
-    timestamp: r.timestamp,
-    severity: r.severity === "normal" ? undefined : r.severity,
-  }
-}
-
 function PatientHistoryPage() {
   const [typeFilter, setTypeFilter] = useState<
     "all" | "glucose" | "blood_pressure"
   >("all")
+  const [range, setRange] = useState<TimeRange>("month")
 
   const { data } = useQuery({
-    queryKey: ["readings", typeFilter],
+    queryKey: ["readings", typeFilter, range],
     queryFn: () =>
       apiClient.GET("/patients/me/readings", {
         params: {
           query: {
             type: typeFilter === "all" ? undefined : typeFilter,
+            from: rangeToFrom(range),
             limit: 50,
           },
         },
@@ -99,6 +86,29 @@ function PatientHistoryPage() {
             <SelectItem value="blood_pressure">Blood pressure only</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-base font-medium tracking-normal normal-case">
+          Time range
+        </Label>
+        <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border p-0.5">
+          {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRange(r)}
+              className={cn(
+                "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                range === r
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {RANGE_LABELS[r]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <ReadingList

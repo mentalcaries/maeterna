@@ -1,13 +1,14 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { eq, and, or, isNull, inArray, desc } from "drizzle-orm"
+import { eq, and, gte, desc } from "drizzle-orm"
 import { createDb } from "../db"
-import { reading, accessGrant, doctorAffiliation } from "../db/schema"
+import { reading } from "../db/schema"
 import { sessionMiddleware, requireRole } from "../middleware/session"
 import { ReadingSchema, ReadingTypeSchema, responses } from "../schemas"
-import { computeSeverity, DEFAULT_THRESHOLDS } from "../lib/thresholds"
+import { resolveThresholds } from "../lib/thresholds"
+import { serializeReading } from "../lib/readings"
+import { doctorHasAccess } from "../lib/access"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
-import type { DB } from "../db"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -17,72 +18,31 @@ function toMgDl(value: number, unit: string): number {
   return unit === "mmol/L" ? Math.round(value * MMOL_TO_MGDL * 10) / 10 : value
 }
 
-async function doctorHasAccess(
-  db: DB,
-  doctorId: string,
-  patientId: string
-): Promise<boolean> {
-  const affiliations = await db
-    .select({ departmentId: doctorAffiliation.departmentId })
-    .from(doctorAffiliation)
-    .where(eq(doctorAffiliation.doctorId, doctorId))
-
-  const deptIds = affiliations.map((a) => a.departmentId)
-  const individualCond = and(
-    eq(accessGrant.grantType, "individual"),
-    eq(accessGrant.granteeId, doctorId)
-  )!
-  const deptCond =
-    deptIds.length > 0
-      ? and(
-          eq(accessGrant.grantType, "department"),
-          inArray(accessGrant.granteeId, deptIds)
-        )
-      : null
-
-  const grants = await db
-    .select({ id: accessGrant.id })
-    .from(accessGrant)
-    .where(
-      and(
-        eq(accessGrant.patientId, patientId),
-        isNull(accessGrant.revokedAt),
-        deptCond ? or(individualCond, deptCond) : individualCond
-      )
-    )
-    .limit(1)
-
-  return grants.length > 0
-}
-
-function serializeReading(r: typeof reading.$inferSelect) {
-  return {
-    id: r.id,
-    patientId: r.patientId,
-    loggedById: r.loggedById,
-    type: r.type as "glucose" | "blood_pressure",
-    value1: r.value1,
-    value2: r.value2 ?? null,
-    unit: r.unit,
-    context: r.context,
-    notes: r.notes ?? null,
-    timestamp: r.timestamp.toISOString(),
-    severity: r.severity as "normal" | "warning" | "critical",
-    createdAt: r.createdAt.toISOString(),
-  }
-}
-
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-const readingBodySchema = z.object({
-  type: ReadingTypeSchema,
+const glucoseBodySchema = z.object({
+  type: z.literal("glucose"),
   value1: z.number(),
-  value2: z.number().nullable().optional(),
-  unit: z.enum(["mg/dL", "mmol/L", "mmHg"]),
-  context: z.string(),
+  unit: z.enum(["mg/dL", "mmol/L"]),
+  context: z.enum(["fasted", "post_meal"]),
   notes: z.string().nullable().optional(),
   timestamp: z.string().datetime(),
 })
+
+const bpBodySchema = z.object({
+  type: z.literal("blood_pressure"),
+  value1: z.number(),
+  value2: z.number(),
+  unit: z.literal("mmHg"),
+  context: z.enum(["morning", "evening"]),
+  notes: z.string().nullable().optional(),
+  timestamp: z.string().datetime(),
+})
+
+const readingBodySchema = z.discriminatedUnion("type", [
+  glucoseBodySchema,
+  bpBodySchema,
+])
 
 const listOwnReadingsRoute = createRoute({
   method: "get",
@@ -92,6 +52,7 @@ const listOwnReadingsRoute = createRoute({
   request: {
     query: z.object({
       type: ReadingTypeSchema.optional(),
+      from: z.string().datetime().optional(),
       limit: z.coerce.number().int().min(1).max(200).default(50),
       offset: z.coerce.number().int().min(0).default(0),
     }),
@@ -186,21 +147,26 @@ export function registerReadingRoutes(app: AppRouter) {
   // GET /patients/me/readings
   app.openapi(listOwnReadingsRoute, async (c) => {
     const u = c.get("user")
-    const { type, limit, offset } = c.req.valid("query")
+    const { type, from, limit, offset } = c.req.valid("query")
     const db = createDb(c.env.DB)
 
-    const allReadings = await db
-      .select()
-      .from(reading)
-      .where(
-        type
-          ? and(eq(reading.patientId, u.id), eq(reading.type, type))
-          : eq(reading.patientId, u.id)
-      )
-      .orderBy(desc(reading.timestamp))
+    const conditions = [eq(reading.patientId, u.id)]
+    if (type) conditions.push(eq(reading.type, type))
+    if (from) conditions.push(gte(reading.timestamp, new Date(from)))
+
+    const [allReadings, { thresholds }] = await Promise.all([
+      db
+        .select()
+        .from(reading)
+        .where(and(...conditions))
+        .orderBy(desc(reading.timestamp)),
+      resolveThresholds(db, u.id),
+    ])
 
     return c.json({
-      data: allReadings.slice(offset, offset + limit).map(serializeReading),
+      data: allReadings
+        .slice(offset, offset + limit)
+        .map((r) => serializeReading(r, thresholds)),
       total: allReadings.length,
     })
   })
@@ -211,19 +177,9 @@ export function registerReadingRoutes(app: AppRouter) {
     const body = c.req.valid("json")
     const db = createDb(c.env.DB)
 
-    if (body.type === "blood_pressure" && body.value2 == null)
-      raise(422, "value2 (diastolic) is required for blood_pressure readings")
-
     const value1 =
       body.type === "glucose" ? toMgDl(body.value1, body.unit) : body.value1
     const unit = body.type === "glucose" ? "mg/dL" : "mmHg"
-    const severity = computeSeverity(
-      body.type,
-      body.context,
-      value1,
-      body.value2,
-      DEFAULT_THRESHOLDS
-    )
     const now = new Date()
 
     const newReading = {
@@ -232,17 +188,17 @@ export function registerReadingRoutes(app: AppRouter) {
       loggedById: u.id,
       type: body.type,
       value1,
-      value2: body.value2 ?? null,
+      value2: body.type === "blood_pressure" ? body.value2 : null,
       unit,
       context: body.context,
       notes: body.notes ?? null,
       timestamp: new Date(body.timestamp),
-      severity,
       createdAt: now,
     }
 
+    const { thresholds } = await resolveThresholds(db, u.id)
     await db.insert(reading).values(newReading)
-    return c.json(serializeReading(newReading), 201)
+    return c.json(serializeReading(newReading, thresholds), 201)
   })
 
   // POST /patients/{patientId}/readings (doctor)
@@ -256,19 +212,10 @@ export function registerReadingRoutes(app: AppRouter) {
 
     if (!(await doctorHasAccess(db, doctor.id, patientId)))
       raise(403, "No active access grant for this patient")
-    if (body.type === "blood_pressure" && body.value2 == null)
-      raise(422, "value2 (diastolic) is required for blood_pressure readings")
 
     const value1 =
       body.type === "glucose" ? toMgDl(body.value1, body.unit) : body.value1
     const unit = body.type === "glucose" ? "mg/dL" : "mmHg"
-    const severity = computeSeverity(
-      body.type,
-      body.context,
-      value1,
-      body.value2,
-      DEFAULT_THRESHOLDS
-    )
 
     const newReading = {
       id: crypto.randomUUID(),
@@ -276,17 +223,17 @@ export function registerReadingRoutes(app: AppRouter) {
       loggedById: doctor.id,
       type: body.type,
       value1,
-      value2: body.value2 ?? null,
+      value2: body.type === "blood_pressure" ? body.value2 : null,
       unit,
       context: body.context,
       notes: body.notes ?? null,
       timestamp: new Date(body.timestamp),
-      severity,
       createdAt: new Date(),
     }
 
+    const { thresholds } = await resolveThresholds(db, patientId)
     await db.insert(reading).values(newReading)
-    return c.json(serializeReading(newReading), 201)
+    return c.json(serializeReading(newReading, thresholds), 201)
   })
 
   // PATCH /readings/{readingId}/notes (doctor)
@@ -305,11 +252,14 @@ export function registerReadingRoutes(app: AppRouter) {
     if (!(await doctorHasAccess(db, doctor.id, existing.patientId)))
       raise(403, "No active access grant for this patient")
 
-    const updated = await db
-      .update(reading)
-      .set({ notes })
-      .where(eq(reading.id, readingId))
-      .returning()
-    return c.json(serializeReading(updated[0]))
+    const [updated, { thresholds }] = await Promise.all([
+      db
+        .update(reading)
+        .set({ notes })
+        .where(eq(reading.id, readingId))
+        .returning(),
+      resolveThresholds(db, existing.patientId),
+    ])
+    return c.json(serializeReading(updated[0], thresholds))
   })
 }

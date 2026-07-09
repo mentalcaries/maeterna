@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { eq, and, or, isNull, inArray, desc, count } from "drizzle-orm"
+import { eq, and, or, isNull, inArray, gte, desc } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   user as userTable,
@@ -21,50 +21,14 @@ import {
   ThresholdsSchema,
   responses,
 } from "../schemas"
-import { DEFAULT_THRESHOLDS } from "../lib/thresholds"
+import { computeSeverity, resolveThresholds } from "../lib/thresholds"
+import { serializeReading } from "../lib/readings"
+import { doctorHasAccess } from "../lib/access"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-async function doctorHasAccess(
-  db: DB,
-  doctorId: string,
-  patientId: string
-): Promise<boolean> {
-  const affiliations = await db
-    .select({ departmentId: doctorAffiliation.departmentId })
-    .from(doctorAffiliation)
-    .where(eq(doctorAffiliation.doctorId, doctorId))
-
-  const deptIds = affiliations.map((a) => a.departmentId)
-  const individualCond = and(
-    eq(accessGrant.grantType, "individual"),
-    eq(accessGrant.granteeId, doctorId)
-  )!
-  const deptCond =
-    deptIds.length > 0
-      ? and(
-          eq(accessGrant.grantType, "department"),
-          inArray(accessGrant.granteeId, deptIds)
-        )
-      : null
-
-  const grants = await db
-    .select({ id: accessGrant.id })
-    .from(accessGrant)
-    .where(
-      and(
-        eq(accessGrant.patientId, patientId),
-        isNull(accessGrant.revokedAt),
-        deptCond ? or(individualCond, deptCond) : individualCond
-      )
-    )
-    .limit(1)
-
-  return grants.length > 0
-}
 
 async function buildDoctorResponse(db: DB, userId: string) {
   const doctorUser = await db
@@ -104,23 +68,6 @@ async function buildDoctorResponse(db: DB, userId: string) {
       | "pending_verification",
     affiliations: affs,
     createdAt: doctorUser!.createdAt.toISOString(),
-  }
-}
-
-function serializeReading(r: typeof reading.$inferSelect) {
-  return {
-    id: r.id,
-    patientId: r.patientId,
-    loggedById: r.loggedById,
-    type: r.type as "glucose" | "blood_pressure",
-    value1: r.value1,
-    value2: r.value2 ?? null,
-    unit: r.unit,
-    context: r.context,
-    notes: r.notes ?? null,
-    timestamp: r.timestamp.toISOString(),
-    severity: r.severity as "normal" | "warning" | "critical",
-    createdAt: r.createdAt.toISOString(),
   }
 }
 
@@ -169,7 +116,10 @@ const getPatientDetailRoute = createRoute({
   path: "/doctors/me/patients/{patientId}",
   tags: ["Doctors"],
   summary: "Get a patient's full detail",
-  request: { params: z.object({ patientId: z.string().min(1) }) },
+  request: {
+    params: z.object({ patientId: z.string().min(1) }),
+    query: z.object({ from: z.string().datetime().optional() }),
+  },
   responses: {
     200: {
       content: {
@@ -317,19 +267,26 @@ export function registerDoctorRoutes(app: AppRouter) {
           .where(eq(patientProfile.userId, p.id))
           .get()
 
-        const alertResult = await db
-          .select({ count: count() })
+        const { thresholds } = await resolveThresholds(db, p.id)
+        const patientReadings = await db
+          .select({
+            type: reading.type,
+            context: reading.context,
+            value1: reading.value1,
+            value2: reading.value2,
+          })
           .from(reading)
-          .where(
-            and(
-              eq(reading.patientId, p.id),
-              or(
-                eq(reading.severity, "warning"),
-                eq(reading.severity, "critical")
-              )
-            )
-          )
-          .get()
+          .where(eq(reading.patientId, p.id))
+        const unreadAlertCount = patientReadings.filter(
+          (r) =>
+            computeSeverity(
+              r.type,
+              r.context,
+              r.value1,
+              r.value2,
+              thresholds
+            ) === "high"
+        ).length
 
         const lastReading = await db
           .select({ timestamp: reading.timestamp })
@@ -351,7 +308,7 @@ export function registerDoctorRoutes(app: AppRouter) {
             status: p.status as "active",
             createdAt: p.createdAt.toISOString(),
           },
-          unreadAlertCount: alertResult?.count ?? 0,
+          unreadAlertCount,
           lastReadingAt: lastReading?.timestamp?.toISOString() ?? null,
         }
       })
@@ -364,6 +321,7 @@ export function registerDoctorRoutes(app: AppRouter) {
   app.openapi(getPatientDetailRoute, async (c) => {
     const doctor = c.get("user")
     const { patientId } = c.req.valid("param")
+    const { from } = c.req.valid("query")
     const db = createDb(c.env.DB)
 
     if (!(await doctorHasAccess(db, doctor.id, patientId)))
@@ -389,35 +347,18 @@ export function registerDoctorRoutes(app: AppRouter) {
       .from(patientProfile)
       .where(eq(patientProfile.userId, patientId))
       .get()
-    const readings = await db
-      .select()
-      .from(reading)
-      .where(eq(reading.patientId, patientId))
-      .orderBy(desc(reading.timestamp))
 
-    const custom = await db
-      .select()
-      .from(threshold)
-      .where(
-        and(
-          eq(threshold.patientId, patientId),
-          eq(threshold.doctorId, doctor.id)
-        )
-      )
-      .get()
+    const conditions = [eq(reading.patientId, patientId)]
+    if (from) conditions.push(gte(reading.timestamp, new Date(from)))
 
-    const thresholds = custom
-      ? {
-          fastingGlucoseWarning: custom.fastingGlucoseWarning,
-          fastingGlucoseCritical: custom.fastingGlucoseCritical,
-          postMealGlucoseWarning: custom.postMealGlucoseWarning,
-          postMealGlucoseCritical: custom.postMealGlucoseCritical,
-          systolicWarning: custom.systolicWarning,
-          systolicCritical: custom.systolicCritical,
-          diastolicWarning: custom.diastolicWarning,
-          diastolicCritical: custom.diastolicCritical,
-        }
-      : { ...DEFAULT_THRESHOLDS }
+    const [readings, { thresholds }] = await Promise.all([
+      db
+        .select()
+        .from(reading)
+        .where(and(...conditions))
+        .orderBy(desc(reading.timestamp)),
+      resolveThresholds(db, patientId),
+    ])
 
     return c.json({
       patient: {
@@ -431,7 +372,7 @@ export function registerDoctorRoutes(app: AppRouter) {
         status: patientUser.status as "active",
         createdAt: patientUser.createdAt.toISOString(),
       },
-      readings: readings.map(serializeReading),
+      readings: readings.map((r) => serializeReading(r, thresholds)),
       thresholds,
     })
   })
@@ -445,34 +386,8 @@ export function registerDoctorRoutes(app: AppRouter) {
     if (!(await doctorHasAccess(db, doctor.id, patientId)))
       raise(403, "No active access grant for this patient")
 
-    const custom = await db
-      .select()
-      .from(threshold)
-      .where(
-        and(
-          eq(threshold.patientId, patientId),
-          eq(threshold.doctorId, doctor.id)
-        )
-      )
-      .get()
-
-    if (custom) {
-      return c.json({
-        thresholds: {
-          fastingGlucoseWarning: custom.fastingGlucoseWarning,
-          fastingGlucoseCritical: custom.fastingGlucoseCritical,
-          postMealGlucoseWarning: custom.postMealGlucoseWarning,
-          postMealGlucoseCritical: custom.postMealGlucoseCritical,
-          systolicWarning: custom.systolicWarning,
-          systolicCritical: custom.systolicCritical,
-          diastolicWarning: custom.diastolicWarning,
-          diastolicCritical: custom.diastolicCritical,
-        },
-        isCustom: true,
-      })
-    }
-
-    return c.json({ thresholds: { ...DEFAULT_THRESHOLDS }, isCustom: false })
+    const { thresholds, isCustom } = await resolveThresholds(db, patientId)
+    return c.json({ thresholds, isCustom })
   })
 
   // PATCH /doctors/me
@@ -510,8 +425,8 @@ export function registerDoctorRoutes(app: AppRouter) {
         updatedAt: now,
       })
       .onConflictDoUpdate({
-        target: [threshold.patientId, threshold.doctorId],
-        set: { ...body, updatedAt: now },
+        target: [threshold.patientId],
+        set: { ...body, doctorId: doctor.id, updatedAt: now },
       })
 
     return c.json(body)

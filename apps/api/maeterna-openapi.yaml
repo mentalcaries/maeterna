@@ -69,17 +69,15 @@ components:
       type: string
       enum: [glucose, blood_pressure]
 
-    GlucoseContext:
+    ReadingContext:
       type: string
-      enum: [fasting, post_meal, morning, before_bed]
-
-    BPContext:
-      type: string
-      enum: [morning, evening, before_bed, at_clinic]
+      description: Glucose readings use fasted/post_meal; blood_pressure readings use morning/evening
+      enum: [fasted, post_meal, morning, evening]
 
     Severity:
       type: string
-      enum: [normal, warning, critical]
+      description: Computed on read from the patient's thresholds — not stored on the reading
+      enum: [normal, high]
 
     GrantType:
       type: string
@@ -237,9 +235,8 @@ components:
           type: string
           example: mmol/L
         context:
-          type: string
-          description: GlucoseContext or BPContext depending on reading type
-          example: fasting
+          $ref: "#/components/schemas/ReadingContext"
+          example: fasted
         notes:
           type: string
           nullable: true
@@ -304,31 +301,20 @@ components:
 
     Thresholds:
       type: object
+      description: One row per patient. Values are in mg/dL (glucose) / mmHg (BP) — the canonical units readings are stored in.
       properties:
-        fastingGlucoseWarning:
+        fastingGlucoseHigh:
           type: number
-          example: 5.3
-        fastingGlucoseCritical:
-          type: number
-          example: 7.0
-        postMealGlucoseWarning:
-          type: number
-          example: 7.8
-        postMealGlucoseCritical:
-          type: number
-          example: 11.1
-        systolicWarning:
+          example: 95
+        postMealGlucoseHigh:
           type: number
           example: 140
-        systolicCritical:
+        systolicHigh:
           type: number
-          example: 160
-        diastolicWarning:
+          example: 140
+        diastolicHigh:
           type: number
           example: 90
-        diastolicCritical:
-          type: number
-          example: 110
 
     AuditLogEntry:
       type: object
@@ -626,6 +612,12 @@ paths:
           schema:
             $ref: "#/components/schemas/ReadingType"
           description: Filter by reading type
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only return readings with timestamp >= this value
         - name: limit
           in: query
           schema:
@@ -676,9 +668,8 @@ paths:
                   description: Diastolic BP (mmHg) — required if type is blood_pressure
                   example: 85
                 context:
-                  type: string
-                  description: GlucoseContext or BPContext depending on type
-                  example: fasting
+                  $ref: "#/components/schemas/ReadingContext"
+                  example: fasted
                 notes:
                   type: string
                   nullable: true
@@ -724,8 +715,9 @@ paths:
                 value2:
                   type: number
                   nullable: true
+                  description: Diastolic BP (mmHg) — required if type is blood_pressure
                 context:
-                  type: string
+                  $ref: "#/components/schemas/ReadingContext"
                 notes:
                   type: string
                   nullable: true
@@ -1031,6 +1023,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only return readings with timestamp >= this value
       responses:
         "200":
           description: Patient detail

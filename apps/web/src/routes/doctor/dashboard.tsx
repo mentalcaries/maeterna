@@ -77,7 +77,7 @@ function DoctorDashboardPage() {
                     <div className="flex items-center gap-2">
                       {unreadAlertCount > 0 && (
                         <Badge
-                          variant="warning"
+                          variant="critical"
                           className="flex items-center gap-1"
                         >
                           <RiAlertLine className="size-3" />

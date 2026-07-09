@@ -7,7 +7,13 @@ export const UserStatusSchema = z.enum([
   "pending_verification",
 ])
 export const ReadingTypeSchema = z.enum(["glucose", "blood_pressure"])
-export const SeveritySchema = z.enum(["normal", "warning", "critical"])
+export const SeveritySchema = z.enum(["normal", "high"])
+export const ContextSchema = z.enum([
+  "fasted",
+  "post_meal",
+  "morning",
+  "evening",
+])
 export const GrantTypeSchema = z.enum(["individual", "department"])
 export const InstitutionTypeSchema = z.enum([
   "hospital",
@@ -24,14 +30,10 @@ export const ErrorSchema = z
 
 export const ThresholdsSchema = z
   .object({
-    fastingGlucoseWarning: z.number(),
-    fastingGlucoseCritical: z.number(),
-    postMealGlucoseWarning: z.number(),
-    postMealGlucoseCritical: z.number(),
-    systolicWarning: z.number(),
-    systolicCritical: z.number(),
-    diastolicWarning: z.number(),
-    diastolicCritical: z.number(),
+    fastingGlucoseHigh: z.number(),
+    postMealGlucoseHigh: z.number(),
+    systolicHigh: z.number(),
+    diastolicHigh: z.number(),
   })
   .openapi("Thresholds")
 
@@ -106,7 +108,7 @@ export const ReadingSchema = z
     value1: z.number(),
     value2: z.number().nullable(),
     unit: z.string(),
-    context: z.string(),
+    context: ContextSchema,
     notes: z.string().nullable(),
     timestamp: z.string().datetime(),
     severity: SeveritySchema,

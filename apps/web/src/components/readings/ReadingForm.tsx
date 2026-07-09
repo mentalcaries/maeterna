@@ -29,15 +29,24 @@ type MealContext = "fasted" | "post_meal"
 type WhenOption = "now" | "custom"
 type GlucoseUnit = "mg/dL" | "mmol/L"
 
-export type ReadingBody = {
-  type: "glucose" | "blood_pressure"
-  value1: number
-  value2?: number | null
-  unit: "mg/dL" | "mmol/L" | "mmHg"
-  context: string
-  notes?: string | null
-  timestamp: string
-}
+export type ReadingBody =
+  | {
+      type: "glucose"
+      value1: number
+      unit: "mg/dL" | "mmol/L"
+      context: "fasted" | "post_meal"
+      notes?: string | null
+      timestamp: string
+    }
+  | {
+      type: "blood_pressure"
+      value1: number
+      value2: number
+      unit: "mmHg"
+      context: "morning" | "evening"
+      notes?: string | null
+      timestamp: string
+    }
 
 interface ReadingFormProps {
   onSubmit: (body: ReadingBody) => Promise<void> | void
@@ -563,7 +572,7 @@ export function ReadingForm({
         <Label htmlFor="notes">Notes (optional)</Label>
         <Textarea
           id="notes"
-          placeholder="Any relevant context..."
+          placeholder="Add your meal or anything relevant"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
