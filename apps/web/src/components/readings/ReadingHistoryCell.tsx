@@ -3,6 +3,7 @@ import { Button } from "@/components/button"
 import { cn } from "@/lib/utils"
 import { toLocalDateStr } from "@/lib/reading-history"
 import type { ApiReading } from "@/lib/reading-history"
+import { SEVERITY_COLORS } from "@/lib/thresholds"
 
 interface ReadingHistoryCellProps {
   reading: ApiReading
@@ -35,6 +36,13 @@ export function ReadingHistoryCell({
             <span
               aria-hidden="true"
               className="size-1.5 shrink-0 rounded-full bg-red-600 dark:bg-red-400"
+            />
+          )}
+          {!isHigh && (
+            <span
+              aria-hidden="true"
+              className="size-1.5 shrink-0 rounded-full"
+              style={{ background: SEVERITY_COLORS.normal }}
             />
           )}
           {valueLabel}
