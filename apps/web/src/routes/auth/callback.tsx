@@ -46,10 +46,6 @@ function CallbackPage() {
         void navigate({ to: "/signup/doctor" })
         return
       }
-      if (user.status === "pending_verification") {
-        void navigate({ to: "/signup/doctor/pending" })
-        return
-      }
       void navigate({ to: "/doctor/dashboard" })
       return
     }

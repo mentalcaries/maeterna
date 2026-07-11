@@ -1,6 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { eq, and, sql, max } from "drizzle-orm"
-import { HTTPException } from "hono/http-exception"
+import { eq, and } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   user as userTable,
@@ -11,7 +10,6 @@ import {
   department,
   adminInvite,
   auditLog,
-  mbttRegistry,
 } from "../db/schema"
 import { sessionMiddleware, requireRole } from "../middleware/session"
 import {
@@ -23,7 +21,6 @@ import {
   responses,
 } from "../schemas"
 import { raise } from "../lib/errors"
-import { syncMBTTRegistry } from "../lib/mbtt-sync"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
@@ -43,8 +40,32 @@ async function buildPatientResponse(db: DB, p: typeof userTable.$inferSelect) {
     dateOfBirth: profile?.dateOfBirth ?? "",
     avatarUrl: p.image,
     role: "patient" as const,
-    status: p.status as "active" | "suspended" | "pending_verification",
+    status: p.status as "active" | "suspended",
     createdAt: p.createdAt.toISOString(),
+  }
+}
+
+function mapAffiliation(row: {
+  id: string
+  institutionId: string | null
+  institutionName: string | null
+  departmentId: string | null
+  departmentName: string | null
+  practiceName: string | null
+}) {
+  return {
+    id: row.id,
+    type: (row.institutionId ? "institution" : "practice") as
+      | "institution"
+      | "practice",
+    institution: row.institutionId
+      ? { id: row.institutionId, name: row.institutionName ?? "" }
+      : null,
+    department:
+      row.institutionId && row.departmentId
+        ? { id: row.departmentId, name: row.departmentName ?? "" }
+        : null,
+    practiceName: row.practiceName,
   }
 }
 
@@ -61,11 +82,13 @@ async function buildDoctorResponse(db: DB, d: typeof userTable.$inferSelect) {
       institutionName: institution.name,
       departmentId: doctorAffiliation.departmentId,
       departmentName: department.name,
+      practiceName: doctorAffiliation.practiceName,
     })
     .from(doctorAffiliation)
-    .innerJoin(institution, eq(doctorAffiliation.institutionId, institution.id))
-    .innerJoin(department, eq(doctorAffiliation.departmentId, department.id))
+    .leftJoin(institution, eq(doctorAffiliation.institutionId, institution.id))
+    .leftJoin(department, eq(doctorAffiliation.departmentId, department.id))
     .where(eq(doctorAffiliation.doctorId, d.id))
+    .orderBy(doctorAffiliation.createdAt)
 
   return {
     id: d.id,
@@ -73,10 +96,10 @@ async function buildDoctorResponse(db: DB, d: typeof userTable.$inferSelect) {
     lastName: d.lastName ?? "",
     email: d.email,
     registrationNumber: profile?.registrationNumber ?? null,
-    verified: profile?.verified ?? false,
+    phoneNumber: profile?.phoneNumber ?? null,
     role: "doctor" as const,
-    status: d.status as "active" | "suspended" | "pending_verification",
-    affiliations: affs,
+    status: d.status as "active" | "suspended",
+    affiliations: affs.map(mapAffiliation),
     createdAt: d.createdAt.toISOString(),
   }
 }
@@ -154,21 +177,6 @@ const updateUserStatusRoute = createRoute({
   },
 })
 
-const approveDoctorRoute = createRoute({
-  method: "post",
-  path: "/admin/users/{userId}/approve",
-  tags: ["Admin"],
-  summary: "Approve a flagged doctor account",
-  request: { params: z.object({ userId: z.string().min(1) }) },
-  responses: {
-    200: {
-      content: { "application/json": { schema: DoctorSchema } },
-      description: "Doctor approved",
-    },
-    ...responses,
-  },
-})
-
 const sendAdminInviteRoute = createRoute({
   method: "post",
   path: "/admin/invites",
@@ -190,45 +198,6 @@ const sendAdminInviteRoute = createRoute({
   },
   responses: {
     201: { description: "Invite sent" },
-    ...responses,
-  },
-})
-
-const syncMbttRoute = createRoute({
-  method: "post",
-  path: "/admin/sync-mbtt",
-  tags: ["Admin"],
-  summary: "Manually trigger MBTT registry sync",
-  responses: {
-    200: {
-      content: {
-        "application/json": {
-          schema: z.object({ syncedAt: z.string(), count: z.number().int() }),
-        },
-      },
-      description: "Sync complete",
-    },
-    ...responses,
-  },
-})
-
-const mbttSyncStatusRoute = createRoute({
-  method: "get",
-  path: "/admin/sync-mbtt/status",
-  tags: ["Admin"],
-  summary: "Get current MBTT registry sync status",
-  responses: {
-    200: {
-      content: {
-        "application/json": {
-          schema: z.object({
-            lastSyncedAt: z.string().nullable(),
-            count: z.number().int(),
-          }),
-        },
-      },
-      description: "Registry status",
-    },
     ...responses,
   },
 })
@@ -328,37 +297,6 @@ export function registerAdminRoutes(app: AppRouter) {
     return c.json(response)
   })
 
-  // POST /admin/users/{userId}/approve
-  app.openapi(approveDoctorRoute, async (c) => {
-    const admin = c.get("user")
-    const { userId } = c.req.valid("param")
-    const db = createDb(c.env.DB)
-
-    const target = await db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, userId))
-      .get()
-    if (!target || target.role !== "doctor") raise(404, "Doctor not found")
-
-    await db
-      .update(userTable)
-      .set({ status: "active", updatedAt: new Date() })
-      .where(eq(userTable.id, userId))
-    await db
-      .update(doctorProfile)
-      .set({ verified: true, updatedAt: new Date() })
-      .where(eq(doctorProfile.userId, userId))
-    await writeAuditLog(db, admin.id, "APPROVE_DOCTOR", userId)
-
-    const updated = await db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, userId))
-      .get()
-    return c.json(await buildDoctorResponse(db, updated!))
-  })
-
   // POST /admin/invites
   app.openapi(sendAdminInviteRoute, async (c) => {
     const admin = c.get("user")
@@ -376,48 +314,6 @@ export function registerAdminRoutes(app: AppRouter) {
     // TODO: send invitation email via email service
     await writeAuditLog(db, admin.id, "SEND_INVITE")
     return new Response(null, { status: 201 }) as never
-  })
-
-  // POST /admin/sync-mbtt
-  app.openapi(syncMbttRoute, async (c) => {
-    const admin = c.get("user")
-    const db = createDb(c.env.DB)
-
-    try {
-      await syncMBTTRegistry(c.env.DB)
-    } catch (err) {
-      console.error("Admin-triggered MBTT sync failed:", err)
-      throw new HTTPException(500, { message: "MBTT sync failed. Check logs." })
-    }
-
-    const result = await db
-      .select({
-        count: sql<number>`count(*)`,
-        syncedAt: max(mbttRegistry.syncedAt),
-      })
-      .from(mbttRegistry)
-      .get()
-
-    await writeAuditLog(db, admin.id, "TRIGGER_MBTT_SYNC")
-    return c.json({ syncedAt: result!.syncedAt ?? "", count: result!.count })
-  })
-
-  // GET /admin/sync-mbtt/status
-  app.openapi(mbttSyncStatusRoute, async (c) => {
-    const db = createDb(c.env.DB)
-
-    const result = await db
-      .select({
-        count: sql<number>`count(*)`,
-        lastSyncedAt: max(mbttRegistry.syncedAt),
-      })
-      .from(mbttRegistry)
-      .get()
-
-    return c.json({
-      lastSyncedAt: result?.lastSyncedAt ?? null,
-      count: result?.count ?? 0,
-    })
   })
 
   // GET /admin/audit-log

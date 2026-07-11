@@ -5,6 +5,7 @@ import {
   accessGrant,
   accessLog,
   user as userTable,
+  doctorProfile,
   doctorAffiliation,
   department,
   institution,
@@ -110,6 +111,7 @@ async function buildGrantResponse(
 ) {
   let granteeName = ""
   let institutionName = ""
+  let registrationNumber: string | null = null
 
   if (grant.grantType === "individual") {
     const doctor = await db
@@ -120,17 +122,29 @@ async function buildGrantResponse(
     granteeName = doctor
       ? `Dr. ${doctor.firstName ?? ""} ${doctor.lastName ?? ""}`.trim()
       : grant.granteeId
+
+    const profile = await db
+      .select({ registrationNumber: doctorProfile.registrationNumber })
+      .from(doctorProfile)
+      .where(eq(doctorProfile.userId, grant.granteeId))
+      .get()
+    registrationNumber = profile?.registrationNumber ?? null
+
     const aff = await db
-      .select({ institutionName: institution.name })
+      .select({
+        institutionName: institution.name,
+        practiceName: doctorAffiliation.practiceName,
+      })
       .from(doctorAffiliation)
-      .innerJoin(
+      .leftJoin(
         institution,
         eq(doctorAffiliation.institutionId, institution.id)
       )
       .where(eq(doctorAffiliation.doctorId, grant.granteeId))
+      .orderBy(doctorAffiliation.createdAt)
       .limit(1)
       .get()
-    institutionName = aff?.institutionName ?? ""
+    institutionName = aff?.institutionName ?? aff?.practiceName ?? ""
   } else {
     const dept = await db
       .select({ deptName: department.name, instName: institution.name })
@@ -149,6 +163,7 @@ async function buildGrantResponse(
     granteeId: grant.granteeId,
     granteeName,
     institutionName,
+    registrationNumber,
     grantedAt: grant.grantedAt.toISOString(),
     revokedAt: grant.revokedAt?.toISOString() ?? null,
   }
@@ -256,13 +271,17 @@ export function registerAccessRoutes(app: AppRouter) {
     const results = await Promise.all(
       sliced.map(async (e) => {
         const aff = await db
-          .select({ institutionName: institution.name })
+          .select({
+            institutionName: institution.name,
+            practiceName: doctorAffiliation.practiceName,
+          })
           .from(doctorAffiliation)
-          .innerJoin(
+          .leftJoin(
             institution,
             eq(doctorAffiliation.institutionId, institution.id)
           )
           .where(eq(doctorAffiliation.doctorId, e.doctorId))
+          .orderBy(doctorAffiliation.createdAt)
           .limit(1)
           .get()
         return {
@@ -270,7 +289,7 @@ export function registerAccessRoutes(app: AppRouter) {
           doctorId: e.doctorId,
           doctorName:
             `Dr. ${e.doctorFirstName ?? ""} ${e.doctorLastName ?? ""}`.trim(),
-          institutionName: aff?.institutionName ?? "",
+          institutionName: aff?.institutionName ?? aff?.practiceName ?? "",
           accessedAt: e.accessedAt.toISOString(),
         }
       })

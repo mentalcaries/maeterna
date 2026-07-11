@@ -117,6 +117,8 @@ export interface paths {
             firstName: string
             lastName: string
             dateOfBirth?: string
+            registrationNumber?: string
+            phoneNumber?: string
           }
         }
       }
@@ -130,86 +132,6 @@ export interface paths {
             "application/json":
               | components["schemas"]["Patient"]
               | components["schemas"]["Doctor"]
-              | components["schemas"]["DoctorVerificationFailed"]
-          }
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/profile/complete/submit-for-review": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Submit doctor profile for manual MBTT verification review */
-    post: {
-      parameters: {
-        query?: never
-        header?: never
-        path?: never
-        cookie?: never
-      }
-      requestBody: {
-        content: {
-          "application/json": {
-            firstName: string
-            lastName: string
-          }
-        }
-      }
-      responses: {
-        /** @description Submitted for review */
-        200: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Doctor"]
           }
         }
         /** @description Missing or invalid session token */
@@ -335,35 +257,23 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get?: never
-    /** Save doctor institution and department affiliations */
-    put: {
+    /** List own doctor affiliations */
+    get: {
       parameters: {
         query?: never
         header?: never
         path?: never
         cookie?: never
       }
-      requestBody: {
-        content: {
-          "application/json": {
-            affiliations: {
-              /** Format: uuid */
-              institutionId: string
-              /** Format: uuid */
-              departmentId: string
-            }[]
-          }
-        }
-      }
+      requestBody?: never
       responses: {
-        /** @description Affiliations saved */
+        /** @description Own affiliations */
         200: {
           headers: {
             [name: string]: unknown
           }
           content: {
-            "application/json": components["schemas"]["Doctor"]
+            "application/json": components["schemas"]["DoctorAffiliation"][]
           }
         }
         /** @description Missing or invalid session token */
@@ -404,7 +314,86 @@ export interface paths {
         }
       }
     }
-    post?: never
+    put?: never
+    /** Add a doctor institution or private-practice affiliation */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json":
+            | {
+                /** Format: uuid */
+                institutionId: string
+                /** Format: uuid */
+                departmentId?: string
+              }
+            | {
+                practiceName: string
+              }
+        }
+      }
+      responses: {
+        /** @description Affiliation created */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["DoctorAffiliation"]
+          }
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Duplicate affiliation */
+        409: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
     delete?: never
     options?: never
     head?: never
@@ -1251,7 +1240,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Search doctors by name or institution */
+    /** Search doctors by name */
     get: {
       parameters: {
         query: {
@@ -1264,16 +1253,25 @@ export interface paths {
       }
       requestBody?: never
       responses: {
-        /** @description Matching doctors with affiliations */
+        /** @description Matching doctors */
         200: {
           headers: {
             [name: string]: unknown
           }
           content: {
             "application/json": {
-              doctorId: string
-              doctorName: string
-              affiliations: components["schemas"]["DoctorAffiliation"][]
+              id: string
+              name: string
+              registrationNumber: string
+              affiliations: {
+                /** @enum {string} */
+                type: "institution" | "practice"
+                /** Format: uuid */
+                institutionId: string | null
+                /** Format: uuid */
+                departmentId: string | null
+                displayName: string
+              }[]
             }[]
           }
         }
@@ -1477,6 +1475,8 @@ export interface paths {
           "application/json": {
             firstName?: string
             lastName?: string
+            registrationNumber?: string
+            phoneNumber?: string
           }
         }
       }
@@ -1973,7 +1973,7 @@ export interface paths {
       parameters: {
         query?: {
           role?: "patient" | "doctor" | "admin"
-          status?: "active" | "suspended" | "pending_verification"
+          status?: "active" | "suspended"
           limit?: number
           offset?: number | null
         }
@@ -2127,80 +2127,6 @@ export interface paths {
     }
     trace?: never
   }
-  "/admin/users/{userId}/approve": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Approve a flagged doctor account */
-    post: {
-      parameters: {
-        query?: never
-        header?: never
-        path: {
-          userId: string
-        }
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        /** @description Doctor approved */
-        200: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Doctor"]
-          }
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   "/admin/invites": {
     parameters: {
       query?: never
@@ -2275,156 +2201,6 @@ export interface paths {
         }
       }
     }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/admin/sync-mbtt": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Manually trigger MBTT registry sync */
-    post: {
-      parameters: {
-        query?: never
-        header?: never
-        path?: never
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        /** @description Sync complete */
-        200: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": {
-              syncedAt: string
-              count: number
-            }
-          }
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/admin/sync-mbtt/status": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Get current MBTT registry sync status */
-    get: {
-      parameters: {
-        query?: never
-        header?: never
-        path?: never
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        /** @description Registry status */
-        200: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": {
-              lastSyncedAt: string | null
-              count: number
-            }
-          }
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    put?: never
-    post?: never
     delete?: never
     options?: never
     head?: never
@@ -2664,7 +2440,7 @@ export interface components {
       /** @enum {string} */
       role: "patient" | "doctor" | "admin"
       /** @enum {string} */
-      status: "active" | "suspended" | "pending_verification"
+      status: "active" | "suspended"
       /** Format: date-time */
       createdAt: string
     }
@@ -2675,12 +2451,12 @@ export interface components {
       lastName: string
       /** Format: email */
       email: string
-      registrationNumber?: string | null
-      verified: boolean
+      registrationNumber: string | null
+      phoneNumber: string | null
       /** @enum {string} */
       role: "patient" | "doctor" | "admin"
       /** @enum {string} */
-      status: "active" | "suspended" | "pending_verification"
+      status: "active" | "suspended"
       affiliations: components["schemas"]["DoctorAffiliation"][]
       /** Format: date-time */
       createdAt: string
@@ -2688,16 +2464,19 @@ export interface components {
     DoctorAffiliation: {
       /** Format: uuid */
       id: string
-      /** Format: uuid */
-      institutionId: string
-      institutionName: string
-      /** Format: uuid */
-      departmentId: string
-      departmentName: string
-    }
-    DoctorVerificationFailed: {
-      /** @enum {boolean} */
-      verificationFailed: true
+      /** @enum {string} */
+      type: "institution" | "practice"
+      institution: {
+        /** Format: uuid */
+        id: string
+        name: string
+      } | null
+      department: {
+        /** Format: uuid */
+        id: string
+        name: string
+      } | null
+      practiceName: string | null
     }
     Reading: {
       /** Format: uuid */
@@ -2732,6 +2511,7 @@ export interface components {
       granteeId: string
       granteeName: string
       institutionName: string
+      registrationNumber: string | null
       /** Format: date-time */
       grantedAt: string
       /** Format: date-time */

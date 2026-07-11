@@ -4,9 +4,13 @@
 -- `wrangler d1 execute maeterna --local ...`. NEVER run this with --remote —
 -- it deletes and recreates every row prefixed `seed-`.
 --
--- Idempotent: safe to re-run. All rows use fixed, human-readable ids
--- prefixed `seed-`, so the cleanup block below removes exactly what this
--- script creates (and nothing else) before re-inserting.
+-- Idempotent: safe to re-run. Almost every row uses a fixed, human-readable
+-- id prefixed `seed-`, so the cleanup block below removes exactly what this
+-- script creates (and nothing else) before re-inserting. The one exception
+-- is the test institution/department: institutionId/departmentId are
+-- UUID-validated by the real API (POST /profile/doctor/affiliations), so
+-- they use fixed real-looking UUIDs instead and are cleaned up by literal
+-- id match.
 
 -- ── Cleanup (child → parent order) ──────────────────────────────────────────
 
@@ -20,33 +24,47 @@ DELETE FROM patient_profile   WHERE id LIKE 'seed-%';
 DELETE FROM doctor_profile    WHERE id LIKE 'seed-%';
 DELETE FROM user_preferences  WHERE user_id LIKE 'seed-%';
 DELETE FROM user              WHERE id LIKE 'seed-%';
-DELETE FROM department        WHERE id LIKE 'seed-%';
-DELETE FROM institution       WHERE id LIKE 'seed-%';
+DELETE FROM department        WHERE id LIKE 'seed-%' OR id = '00000000-0000-4000-8000-000000000002';
+DELETE FROM institution       WHERE id LIKE 'seed-%' OR id = '00000000-0000-4000-8000-000000000001';
 
 -- ── Institution + department ────────────────────────────────────────────────
+-- Fixed UUIDs (not `seed-`-prefixed like everything else here) so this
+-- institution is actually selectable through the real, UUID-validated
+-- POST /profile/doctor/affiliations endpoint.
 
 INSERT INTO institution (id, name, type) VALUES
-  ('seed-institution-1', 'Seed Test Hospital', 'hospital');
+  ('00000000-0000-4000-8000-000000000001', 'Seed Test Hospital', 'hospital');
 
 INSERT INTO department (id, institution_id, name) VALUES
-  ('seed-department-1', 'seed-institution-1', 'Seed Test Department');
+  ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'Seed Test Department');
 
 -- ── Doctors ──────────────────────────────────────────────────────────────────
--- Verified doctor: user.status = 'active', doctor_profile.verified = 1.
--- Unverified doctor: user.status = 'pending_verification' — this is the
--- actual gate the web app's doctor route guard checks (redirects to
--- /signup/doctor/pending), not just doctor_profile.verified.
+-- Doctors self-attest a registration_number and phone_number at signup — no
+-- external verification, all seeded doctors are simply user.status = 'active'.
+-- Affiliation shapes vary to exercise the UI: hospital-only, practice-only,
+-- hospital + practice, and no affiliations at all.
 
 INSERT INTO user (id, name, email, email_verified, image, created_at, updated_at, role, status, first_name, last_name) VALUES
-  ('seed-doctor-verified', 'Vera Verified', 'doctor.verified@seed.test', 1, NULL, strftime('%s','now'), strftime('%s','now'), 'doctor', 'active', 'Vera', 'Verified'),
-  ('seed-doctor-unverified', 'Uma Unverified', 'doctor.unverified@seed.test', 1, NULL, strftime('%s','now'), strftime('%s','now'), 'doctor', 'pending_verification', 'Uma', 'Unverified');
+  ('seed-doctor-verified', 'Vera Hospital', 'doctor.hospital@seed.test', 1, NULL, strftime('%s','now'), strftime('%s','now'), 'doctor', 'active', 'Vera', 'Hospital'),
+  ('seed-doctor-unverified', 'Uma Practice', 'doctor.practice@seed.test', 1, NULL, strftime('%s','now'), strftime('%s','now'), 'doctor', 'active', 'Uma', 'Practice'),
+  ('seed-doctor-hybrid', 'Hank Hybrid', 'doctor.hybrid@seed.test', 1, NULL, strftime('%s','now'), strftime('%s','now'), 'doctor', 'active', 'Hank', 'Hybrid'),
+  ('seed-doctor-solo', 'Sam Solo', 'doctor.solo@seed.test', 1, NULL, strftime('%s','now'), strftime('%s','now'), 'doctor', 'active', 'Sam', 'Solo');
 
-INSERT INTO doctor_profile (id, user_id, registration_number, verified, updated_at) VALUES
-  ('seed-doctor-verified-profile', 'seed-doctor-verified', NULL, 1, strftime('%s','now')),
-  ('seed-doctor-unverified-profile', 'seed-doctor-unverified', NULL, 0, strftime('%s','now'));
+INSERT INTO doctor_profile (id, user_id, registration_number, phone_number, updated_at) VALUES
+  ('seed-doctor-verified-profile', 'seed-doctor-verified', 'MB-2015-0110', '+18685550101', strftime('%s','now')),
+  ('seed-doctor-unverified-profile', 'seed-doctor-unverified', 'MB-2018-0287', '+18685550102', strftime('%s','now')),
+  ('seed-doctor-hybrid-profile', 'seed-doctor-hybrid', 'MB-2020-0356', '+18685550103', strftime('%s','now')),
+  ('seed-doctor-solo-profile', 'seed-doctor-solo', 'MB-2021-0499', '+18685550104', strftime('%s','now'));
 
-INSERT INTO doctor_affiliation (id, doctor_id, institution_id, department_id) VALUES
-  ('seed-affiliation-verified', 'seed-doctor-verified', 'seed-institution-1', 'seed-department-1');
+-- seed-doctor-verified: single public institution.
+-- seed-doctor-unverified: private practice only, no institution.
+-- seed-doctor-hybrid: public institution AND a named private practice.
+-- seed-doctor-solo: no affiliation rows at all.
+INSERT INTO doctor_affiliation (id, doctor_id, institution_id, department_id, practice_name, created_at) VALUES
+  ('seed-affiliation-verified', 'seed-doctor-verified', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002', NULL, strftime('%s','now')),
+  ('seed-affiliation-practice', 'seed-doctor-unverified', NULL, NULL, 'Westshore Medical', strftime('%s','now')),
+  ('seed-affiliation-hybrid-inst', 'seed-doctor-hybrid', '00000000-0000-4000-8000-000000000001', NULL, NULL, strftime('%s','now')),
+  ('seed-affiliation-hybrid-practice', 'seed-doctor-hybrid', NULL, NULL, 'Eastside Wellness Clinic', strftime('%s','now'));
 
 -- ── Patients ─────────────────────────────────────────────────────────────────
 

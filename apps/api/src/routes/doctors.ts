@@ -19,6 +19,8 @@ import {
   PatientSchema,
   ReadingSchema,
   ThresholdsSchema,
+  RegistrationNumberSchema,
+  PhoneNumberSchema,
   responses,
 } from "../schemas"
 import { computeSeverity, resolveThresholds } from "../lib/thresholds"
@@ -29,6 +31,30 @@ import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mapAffiliation(row: {
+  id: string
+  institutionId: string | null
+  institutionName: string | null
+  departmentId: string | null
+  departmentName: string | null
+  practiceName: string | null
+}) {
+  return {
+    id: row.id,
+    type: (row.institutionId ? "institution" : "practice") as
+      | "institution"
+      | "practice",
+    institution: row.institutionId
+      ? { id: row.institutionId, name: row.institutionName ?? "" }
+      : null,
+    department:
+      row.institutionId && row.departmentId
+        ? { id: row.departmentId, name: row.departmentName ?? "" }
+        : null,
+    practiceName: row.practiceName,
+  }
+}
 
 async function buildDoctorResponse(db: DB, userId: string) {
   const doctorUser = await db
@@ -48,11 +74,13 @@ async function buildDoctorResponse(db: DB, userId: string) {
       institutionName: institution.name,
       departmentId: doctorAffiliation.departmentId,
       departmentName: department.name,
+      practiceName: doctorAffiliation.practiceName,
     })
     .from(doctorAffiliation)
-    .innerJoin(institution, eq(doctorAffiliation.institutionId, institution.id))
-    .innerJoin(department, eq(doctorAffiliation.departmentId, department.id))
+    .leftJoin(institution, eq(doctorAffiliation.institutionId, institution.id))
+    .leftJoin(department, eq(doctorAffiliation.departmentId, department.id))
     .where(eq(doctorAffiliation.doctorId, userId))
+    .orderBy(doctorAffiliation.createdAt)
 
   return {
     id: doctorUser!.id,
@@ -60,13 +88,10 @@ async function buildDoctorResponse(db: DB, userId: string) {
     lastName: doctorUser!.lastName ?? "",
     email: doctorUser!.email,
     registrationNumber: profile?.registrationNumber ?? null,
-    verified: profile?.verified ?? false,
+    phoneNumber: profile?.phoneNumber ?? null,
     role: "doctor" as const,
-    status: doctorUser!.status as
-      | "active"
-      | "suspended"
-      | "pending_verification",
-    affiliations: affs,
+    status: doctorUser!.status as "active" | "suspended",
+    affiliations: affs.map(mapAffiliation),
     createdAt: doctorUser!.createdAt.toISOString(),
   }
 }
@@ -193,6 +218,8 @@ const patchMeRoute = createRoute({
           schema: z.object({
             firstName: z.string().min(1).optional(),
             lastName: z.string().min(1).optional(),
+            registrationNumber: RegistrationNumberSchema.optional(),
+            phoneNumber: PhoneNumberSchema.optional(),
           }),
         },
       },
@@ -227,7 +254,9 @@ export function registerDoctorRoutes(app: AppRouter) {
       .select({ departmentId: doctorAffiliation.departmentId })
       .from(doctorAffiliation)
       .where(eq(doctorAffiliation.doctorId, doctor.id))
-    const deptIds = affiliations.map((a) => a.departmentId)
+    const deptIds = affiliations
+      .map((a) => a.departmentId)
+      .filter((id): id is string => id !== null)
 
     const individualCond = and(
       eq(accessGrant.grantType, "individual"),
@@ -392,16 +421,49 @@ export function registerDoctorRoutes(app: AppRouter) {
 
   // PATCH /doctors/me
   app.openapi(patchMeRoute, async (c) => {
-    const { firstName, lastName } = c.req.valid("json")
+    const { firstName, lastName, registrationNumber, phoneNumber } =
+      c.req.valid("json")
     const db = createDb(c.env.DB)
-    await db
-      .update(userTable)
-      .set({
-        ...(firstName !== undefined && { firstName }),
-        ...(lastName !== undefined && { lastName }),
-      })
-      .where(eq(userTable.id, c.get("user").id))
-    return c.json(await buildDoctorResponse(db, c.get("user").id))
+    const doctorId = c.get("user").id
+
+    if (firstName !== undefined || lastName !== undefined) {
+      await db
+        .update(userTable)
+        .set({
+          ...(firstName !== undefined && { firstName }),
+          ...(lastName !== undefined && { lastName }),
+        })
+        .where(eq(userTable.id, doctorId))
+    }
+
+    if (registrationNumber !== undefined || phoneNumber !== undefined) {
+      const now = new Date()
+      const current = await db
+        .select()
+        .from(doctorProfile)
+        .where(eq(doctorProfile.userId, doctorId))
+        .get()
+      await db
+        .insert(doctorProfile)
+        .values({
+          id: crypto.randomUUID(),
+          userId: doctorId,
+          registrationNumber:
+            registrationNumber ?? current?.registrationNumber ?? "",
+          phoneNumber: phoneNumber ?? current?.phoneNumber ?? "",
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: doctorProfile.userId,
+          set: {
+            ...(registrationNumber !== undefined && { registrationNumber }),
+            ...(phoneNumber !== undefined && { phoneNumber }),
+            updatedAt: now,
+          },
+        })
+    }
+
+    return c.json(await buildDoctorResponse(db, doctorId))
   })
 
   // PUT /doctors/me/patients/{patientId}/thresholds

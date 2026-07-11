@@ -16,8 +16,6 @@ export const Route = createFileRoute("/")({
     }
     if (user.role === "doctor") {
       if (!user.firstName) throw redirect({ to: "/signup/doctor" })
-      if (user.status === "pending_verification")
-        throw redirect({ to: "/signup/doctor/pending" })
       throw redirect({ to: "/doctor/dashboard" })
     }
     throw redirect({ to: "/admin/dashboard" })

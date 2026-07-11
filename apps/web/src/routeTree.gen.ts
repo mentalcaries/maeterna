@@ -27,20 +27,16 @@ import { Route as PatientDashboardRouteImport } from './routes/patient/dashboard
 import { Route as PatientAccessRouteImport } from './routes/patient/access'
 import { Route as OnboardingPatientRouteImport } from './routes/onboarding/patient'
 import { Route as DoctorSettingsRouteImport } from './routes/doctor/settings'
-import { Route as DoctorPendingRouteImport } from './routes/doctor/pending'
 import { Route as DoctorLoginRouteImport } from './routes/doctor/login'
 import { Route as DoctorDashboardRouteImport } from './routes/doctor/dashboard'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminSyncRouteImport } from './routes/admin/sync'
-import { Route as AdminPendingRouteImport } from './routes/admin/pending'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminInviteRouteImport } from './routes/admin/invite'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminAuditLogRouteImport } from './routes/admin/audit-log'
 import { Route as AdminAuditRouteImport } from './routes/admin/audit'
 import { Route as SignupDoctorIndexRouteImport } from './routes/signup/doctor/index'
-import { Route as SignupDoctorPendingRouteImport } from './routes/signup/doctor/pending'
 import { Route as SignupDoctorAffiliationsRouteImport } from './routes/signup/doctor/affiliations'
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor/patients/$id'
 
@@ -134,11 +130,6 @@ const DoctorSettingsRoute = DoctorSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DoctorRouteRoute,
 } as any)
-const DoctorPendingRoute = DoctorPendingRouteImport.update({
-  id: '/pending',
-  path: '/pending',
-  getParentRoute: () => DoctorRouteRoute,
-} as any)
 const DoctorLoginRoute = DoctorLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -157,16 +148,6 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSyncRoute = AdminSyncRouteImport.update({
-  id: '/sync',
-  path: '/sync',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminPendingRoute = AdminPendingRouteImport.update({
-  id: '/pending',
-  path: '/pending',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -199,11 +180,6 @@ const SignupDoctorIndexRoute = SignupDoctorIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SignupDoctorRoute,
 } as any)
-const SignupDoctorPendingRoute = SignupDoctorPendingRouteImport.update({
-  id: '/pending',
-  path: '/pending',
-  getParentRoute: () => SignupDoctorRoute,
-} as any)
 const SignupDoctorAffiliationsRoute =
   SignupDoctorAffiliationsRouteImport.update({
     id: '/affiliations',
@@ -229,13 +205,10 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/pending': typeof AdminPendingRoute
-  '/admin/sync': typeof AdminSyncRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
-  '/doctor/pending': typeof DoctorPendingRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
@@ -249,7 +222,6 @@ export interface FileRoutesByFullPath {
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/signup/doctor/affiliations': typeof SignupDoctorAffiliationsRoute
-  '/signup/doctor/pending': typeof SignupDoctorPendingRoute
   '/signup/doctor/': typeof SignupDoctorIndexRoute
 }
 export interface FileRoutesByTo {
@@ -265,13 +237,10 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/pending': typeof AdminPendingRoute
-  '/admin/sync': typeof AdminSyncRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
-  '/doctor/pending': typeof DoctorPendingRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
@@ -284,7 +253,6 @@ export interface FileRoutesByTo {
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/signup/doctor/affiliations': typeof SignupDoctorAffiliationsRoute
-  '/signup/doctor/pending': typeof SignupDoctorPendingRoute
   '/signup/doctor': typeof SignupDoctorIndexRoute
 }
 export interface FileRoutesById {
@@ -301,13 +269,10 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/invite': typeof AdminInviteRoute
   '/admin/login': typeof AdminLoginRoute
-  '/admin/pending': typeof AdminPendingRoute
-  '/admin/sync': typeof AdminSyncRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/doctor/dashboard': typeof DoctorDashboardRoute
   '/doctor/login': typeof DoctorLoginRoute
-  '/doctor/pending': typeof DoctorPendingRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/onboarding/patient': typeof OnboardingPatientRoute
   '/patient/access': typeof PatientAccessRoute
@@ -321,7 +286,6 @@ export interface FileRoutesById {
   '/signup/select-role': typeof SignupSelectRoleRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/signup/doctor/affiliations': typeof SignupDoctorAffiliationsRoute
-  '/signup/doctor/pending': typeof SignupDoctorPendingRoute
   '/signup/doctor/': typeof SignupDoctorIndexRoute
 }
 export interface FileRouteTypes {
@@ -339,13 +303,10 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/invite'
     | '/admin/login'
-    | '/admin/pending'
-    | '/admin/sync'
     | '/admin/users'
     | '/auth/callback'
     | '/doctor/dashboard'
     | '/doctor/login'
-    | '/doctor/pending'
     | '/doctor/settings'
     | '/onboarding/patient'
     | '/patient/access'
@@ -359,7 +320,6 @@ export interface FileRouteTypes {
     | '/signup/select-role'
     | '/doctor/patients/$id'
     | '/signup/doctor/affiliations'
-    | '/signup/doctor/pending'
     | '/signup/doctor/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -375,13 +335,10 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/invite'
     | '/admin/login'
-    | '/admin/pending'
-    | '/admin/sync'
     | '/admin/users'
     | '/auth/callback'
     | '/doctor/dashboard'
     | '/doctor/login'
-    | '/doctor/pending'
     | '/doctor/settings'
     | '/onboarding/patient'
     | '/patient/access'
@@ -394,7 +351,6 @@ export interface FileRouteTypes {
     | '/signup/select-role'
     | '/doctor/patients/$id'
     | '/signup/doctor/affiliations'
-    | '/signup/doctor/pending'
     | '/signup/doctor'
   id:
     | '__root__'
@@ -410,13 +366,10 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/invite'
     | '/admin/login'
-    | '/admin/pending'
-    | '/admin/sync'
     | '/admin/users'
     | '/auth/callback'
     | '/doctor/dashboard'
     | '/doctor/login'
-    | '/doctor/pending'
     | '/doctor/settings'
     | '/onboarding/patient'
     | '/patient/access'
@@ -430,7 +383,6 @@ export interface FileRouteTypes {
     | '/signup/select-role'
     | '/doctor/patients/$id'
     | '/signup/doctor/affiliations'
-    | '/signup/doctor/pending'
     | '/signup/doctor/'
   fileRoutesById: FileRoutesById
 }
@@ -573,13 +525,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorSettingsRouteImport
       parentRoute: typeof DoctorRouteRoute
     }
-    '/doctor/pending': {
-      id: '/doctor/pending'
-      path: '/pending'
-      fullPath: '/doctor/pending'
-      preLoaderRoute: typeof DoctorPendingRouteImport
-      parentRoute: typeof DoctorRouteRoute
-    }
     '/doctor/login': {
       id: '/doctor/login'
       path: '/login'
@@ -606,20 +551,6 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/sync': {
-      id: '/admin/sync'
-      path: '/sync'
-      fullPath: '/admin/sync'
-      preLoaderRoute: typeof AdminSyncRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/pending': {
-      id: '/admin/pending'
-      path: '/pending'
-      fullPath: '/admin/pending'
-      preLoaderRoute: typeof AdminPendingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/login': {
@@ -664,13 +595,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupDoctorIndexRouteImport
       parentRoute: typeof SignupDoctorRoute
     }
-    '/signup/doctor/pending': {
-      id: '/signup/doctor/pending'
-      path: '/pending'
-      fullPath: '/signup/doctor/pending'
-      preLoaderRoute: typeof SignupDoctorPendingRouteImport
-      parentRoute: typeof SignupDoctorRoute
-    }
     '/signup/doctor/affiliations': {
       id: '/signup/doctor/affiliations'
       path: '/affiliations'
@@ -694,8 +618,6 @@ interface AdminRouteRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminInviteRoute: typeof AdminInviteRoute
   AdminLoginRoute: typeof AdminLoginRoute
-  AdminPendingRoute: typeof AdminPendingRoute
-  AdminSyncRoute: typeof AdminSyncRoute
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
@@ -705,8 +627,6 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
   AdminInviteRoute: AdminInviteRoute,
   AdminLoginRoute: AdminLoginRoute,
-  AdminPendingRoute: AdminPendingRoute,
-  AdminSyncRoute: AdminSyncRoute,
   AdminUsersRoute: AdminUsersRoute,
 }
 
@@ -717,7 +637,6 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 interface DoctorRouteRouteChildren {
   DoctorDashboardRoute: typeof DoctorDashboardRoute
   DoctorLoginRoute: typeof DoctorLoginRoute
-  DoctorPendingRoute: typeof DoctorPendingRoute
   DoctorSettingsRoute: typeof DoctorSettingsRoute
   DoctorPatientsIdRoute: typeof DoctorPatientsIdRoute
 }
@@ -725,7 +644,6 @@ interface DoctorRouteRouteChildren {
 const DoctorRouteRouteChildren: DoctorRouteRouteChildren = {
   DoctorDashboardRoute: DoctorDashboardRoute,
   DoctorLoginRoute: DoctorLoginRoute,
-  DoctorPendingRoute: DoctorPendingRoute,
   DoctorSettingsRoute: DoctorSettingsRoute,
   DoctorPatientsIdRoute: DoctorPatientsIdRoute,
 }
@@ -768,13 +686,11 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface SignupDoctorRouteChildren {
   SignupDoctorAffiliationsRoute: typeof SignupDoctorAffiliationsRoute
-  SignupDoctorPendingRoute: typeof SignupDoctorPendingRoute
   SignupDoctorIndexRoute: typeof SignupDoctorIndexRoute
 }
 
 const SignupDoctorRouteChildren: SignupDoctorRouteChildren = {
   SignupDoctorAffiliationsRoute: SignupDoctorAffiliationsRoute,
-  SignupDoctorPendingRoute: SignupDoctorPendingRoute,
   SignupDoctorIndexRoute: SignupDoctorIndexRoute,
 }
 

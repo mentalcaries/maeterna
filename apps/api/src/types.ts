@@ -6,7 +6,7 @@ export type SessionUser = {
   name: string
   image: string | null
   role: "patient" | "doctor" | "admin" | null
-  status: "active" | "suspended" | "pending_verification"
+  status: "active" | "suspended"
   firstName: string | null
   lastName: string | null
   createdAt: Date

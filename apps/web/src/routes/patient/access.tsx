@@ -16,19 +16,24 @@ import { Separator } from "@/components/separator"
 import { cn } from "@/lib/utils"
 import { RiSearchLine, RiUserLine, RiBuilding2Line } from "@remixicon/react"
 import { apiClient } from "@/lib/api-client"
-import type { components } from "@/lib/api.types"
 
 export const Route = createFileRoute("/patient/access")({
   component: PatientAccessPage,
 })
 
-type SearchDoctor = {
-  doctorId: string
-  doctorName: string
-  affiliations: components["schemas"]["DoctorAffiliation"][]
+type SearchDoctorAffiliation = {
+  type: "institution" | "practice"
+  institutionId: string | null
+  departmentId: string | null
+  displayName: string
 }
 
-type SelectedAffiliation = components["schemas"]["DoctorAffiliation"] | null
+type SearchDoctor = {
+  id: string
+  name: string
+  registrationNumber: string
+  affiliations: SearchDoctorAffiliation[]
+}
 
 function PatientAccessPage() {
   const queryClient = useQueryClient()
@@ -36,8 +41,8 @@ function PatientAccessPage() {
   const [selectedDoctor, setSelectedDoctor] = useState<SearchDoctor | null>(
     null
   )
-  const [selectedAffiliation, setSelectedAffiliation] =
-    useState<SelectedAffiliation>(null)
+  const [selectedInstitutionAffiliation, setSelectedInstitutionAffiliation] =
+    useState<SearchDoctorAffiliation | null>(null)
   const [grantType, setGrantType] = useState<"individual" | "department">(
     "individual"
   )
@@ -95,7 +100,11 @@ function PatientAccessPage() {
 
   function openGrantDialog(doctor: SearchDoctor) {
     setSelectedDoctor(doctor)
-    setSelectedAffiliation(doctor.affiliations[0] ?? null)
+    setSelectedInstitutionAffiliation(
+      doctor.affiliations.find(
+        (a) => a.type === "institution" && a.departmentId !== null
+      ) ?? null
+    )
     setGrantType("individual")
     setGrantDialogOpen(true)
   }
@@ -104,13 +113,12 @@ function PatientAccessPage() {
     if (!selectedDoctor) return
     const granteeId =
       grantType === "individual"
-        ? selectedDoctor.doctorId
-        : (selectedAffiliation?.institutionId ?? selectedDoctor.doctorId)
+        ? selectedDoctor.id
+        : (selectedInstitutionAffiliation?.departmentId ?? selectedDoctor.id)
 
     grantMutation.mutate({ grantType, granteeId })
   }
 
-  const selectedAffiliations = selectedDoctor?.affiliations ?? []
   const filteredResults = query.trim().length >= 2 ? searchResults : []
 
   return (
@@ -128,7 +136,7 @@ function PatientAccessPage() {
         <div className="relative">
           <RiSearchLine className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by doctor name or institution…"
+            placeholder="Search by doctor name…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
@@ -137,27 +145,31 @@ function PatientAccessPage() {
 
         {filteredResults.length > 0 && (
           <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-            {filteredResults.map((doctor) => {
-              const primary = doctor.affiliations[0]
-              return (
-                <button
-                  key={doctor.doctorId}
-                  type="button"
-                  onClick={() => openGrantDialog(doctor)}
-                  className="flex items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-muted/40"
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-base font-medium">{doctor.doctorName}</p>
-                    {primary ? (
-                      <p className="text-xs text-muted-foreground">
-                        {primary.departmentName} · {primary.institutionName}
-                      </p>
-                    ) : null}
-                  </div>
-                  <span className="mt-0.5 text-xs text-primary">Grant</span>
-                </button>
-              )
-            })}
+            {filteredResults.map((doctor) => (
+              <button
+                key={doctor.id}
+                type="button"
+                onClick={() => openGrantDialog(doctor)}
+                className="flex items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-muted/40"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-base font-medium">{doctor.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Reg. {doctor.registrationNumber}
+                  </p>
+                  {doctor.affiliations.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {doctor.affiliations
+                        .map((a) => a.displayName)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="mt-0.5 shrink-0 text-xs text-primary">
+                  Grant
+                </span>
+              </button>
+            ))}
           </div>
         )}
 
@@ -218,6 +230,12 @@ function PatientAccessPage() {
                         {grant.institutionName}
                       </p>
                     )}
+                    {grant.grantType === "individual" &&
+                      grant.registrationNumber && (
+                        <p className="text-xs text-muted-foreground">
+                          Reg. {grant.registrationNumber}
+                        </p>
+                      )}
                     <p className="text-xs text-muted-foreground">
                       Granted{" "}
                       {new Date(grant.grantedAt).toLocaleDateString("en-TT", {
@@ -282,12 +300,24 @@ function PatientAccessPage() {
 
           {selectedDoctor && (
             <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5">
+                <p className="text-base font-medium">{selectedDoctor.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Reg. {selectedDoctor.registrationNumber}
+                </p>
+                {selectedDoctor.affiliations.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedDoctor.affiliations
+                      .map((a) => a.displayName)
+                      .join(" · ")}
+                  </p>
+                ) : null}
+              </div>
+
+              <Separator />
+
               <p className="text-sm text-muted-foreground">
-                Choose the scope of access for{" "}
-                <span className="font-medium text-foreground">
-                  {selectedDoctor.doctorName}
-                </span>
-                .
+                Choose the scope of access.
               </p>
 
               <div className="flex flex-col gap-2">
@@ -295,29 +325,18 @@ function PatientAccessPage() {
                   selected={grantType === "individual"}
                   onSelect={() => setGrantType("individual")}
                   icon={RiUserLine}
-                  label={selectedDoctor.doctorName}
+                  label={selectedDoctor.name}
                   sub="This doctor only"
                 />
 
-                {selectedAffiliations.length > 0 && (
-                  <>
-                    {selectedAffiliations.map((aff) => (
-                      <GrantOption
-                        key={aff.departmentId}
-                        selected={
-                          grantType === "department" &&
-                          selectedAffiliation?.departmentId === aff.departmentId
-                        }
-                        onSelect={() => {
-                          setGrantType("department")
-                          setSelectedAffiliation(aff)
-                        }}
-                        icon={RiBuilding2Line}
-                        label={`${aff.departmentName} at ${aff.institutionName}`}
-                        sub="All doctors in this department"
-                      />
-                    ))}
-                  </>
+                {selectedInstitutionAffiliation && (
+                  <GrantOption
+                    selected={grantType === "department"}
+                    onSelect={() => setGrantType("department")}
+                    icon={RiBuilding2Line}
+                    label={`All doctors at ${selectedInstitutionAffiliation.displayName}`}
+                    sub="Department-wide access"
+                  />
                 )}
               </div>
 
