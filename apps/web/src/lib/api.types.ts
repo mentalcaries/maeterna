@@ -1475,7 +1475,6 @@ export interface paths {
           "application/json": {
             firstName?: string
             lastName?: string
-            registrationNumber?: string
             phoneNumber?: string
           }
         }

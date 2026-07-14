@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { eq, isNull, and } from "drizzle-orm"
+import { eq, isNull, and, inArray } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   accessGrant,
@@ -105,68 +105,106 @@ const accessLogRoute = createRoute({
 
 type CreateDbReturn = ReturnType<typeof createDb>
 
-async function buildGrantResponse(
+async function buildGrantResponses(
   db: CreateDbReturn,
-  grant: typeof accessGrant.$inferSelect
+  grants: (typeof accessGrant.$inferSelect)[]
 ) {
-  let granteeName = ""
-  let institutionName = ""
-  let registrationNumber: string | null = null
+  const doctorIds = [
+    ...new Set(
+      grants.filter((g) => g.grantType === "individual").map((g) => g.granteeId)
+    ),
+  ]
+  const deptIds = [
+    ...new Set(
+      grants.filter((g) => g.grantType === "department").map((g) => g.granteeId)
+    ),
+  ]
 
-  if (grant.grantType === "individual") {
-    const doctor = await db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, grant.granteeId))
-      .get()
-    granteeName = doctor
-      ? `Dr. ${doctor.firstName ?? ""} ${doctor.lastName ?? ""}`.trim()
-      : grant.granteeId
+  const [doctors, profiles, affRows, depts] = await Promise.all([
+    doctorIds.length > 0
+      ? db.select().from(userTable).where(inArray(userTable.id, doctorIds))
+      : Promise.resolve([]),
+    doctorIds.length > 0
+      ? db
+          .select({
+            userId: doctorProfile.userId,
+            registrationNumber: doctorProfile.registrationNumber,
+          })
+          .from(doctorProfile)
+          .where(inArray(doctorProfile.userId, doctorIds))
+      : Promise.resolve([]),
+    doctorIds.length > 0
+      ? db
+          .select({
+            doctorId: doctorAffiliation.doctorId,
+            institutionName: institution.name,
+            practiceName: doctorAffiliation.practiceName,
+          })
+          .from(doctorAffiliation)
+          .leftJoin(
+            institution,
+            eq(doctorAffiliation.institutionId, institution.id)
+          )
+          .where(inArray(doctorAffiliation.doctorId, doctorIds))
+          .orderBy(doctorAffiliation.createdAt)
+      : Promise.resolve([]),
+    deptIds.length > 0
+      ? db
+          .select({
+            deptId: department.id,
+            deptName: department.name,
+            instName: institution.name,
+          })
+          .from(department)
+          .innerJoin(institution, eq(department.institutionId, institution.id))
+          .where(inArray(department.id, deptIds))
+      : Promise.resolve([]),
+  ])
 
-    const profile = await db
-      .select({ registrationNumber: doctorProfile.registrationNumber })
-      .from(doctorProfile)
-      .where(eq(doctorProfile.userId, grant.granteeId))
-      .get()
-    registrationNumber = profile?.registrationNumber ?? null
-
-    const aff = await db
-      .select({
-        institutionName: institution.name,
-        practiceName: doctorAffiliation.practiceName,
-      })
-      .from(doctorAffiliation)
-      .leftJoin(
-        institution,
-        eq(doctorAffiliation.institutionId, institution.id)
-      )
-      .where(eq(doctorAffiliation.doctorId, grant.granteeId))
-      .orderBy(doctorAffiliation.createdAt)
-      .limit(1)
-      .get()
-    institutionName = aff?.institutionName ?? aff?.practiceName ?? ""
-  } else {
-    const dept = await db
-      .select({ deptName: department.name, instName: institution.name })
-      .from(department)
-      .innerJoin(institution, eq(department.institutionId, institution.id))
-      .where(eq(department.id, grant.granteeId))
-      .get()
-    granteeName = dept?.deptName ?? grant.granteeId
-    institutionName = dept?.instName ?? ""
+  const doctorById = new Map(doctors.map((d) => [d.id, d]))
+  const profileByDoctorId = new Map(profiles.map((p) => [p.userId, p]))
+  const firstAffByDoctorId = new Map<
+    string,
+    { institutionName: string | null; practiceName: string | null }
+  >()
+  for (const row of affRows) {
+    if (!firstAffByDoctorId.has(row.doctorId))
+      firstAffByDoctorId.set(row.doctorId, row)
   }
+  const deptById = new Map(depts.map((d) => [d.deptId, d]))
 
-  return {
-    id: grant.id,
-    patientId: grant.patientId,
-    grantType: grant.grantType as "individual" | "department",
-    granteeId: grant.granteeId,
-    granteeName,
-    institutionName,
-    registrationNumber,
-    grantedAt: grant.grantedAt.toISOString(),
-    revokedAt: grant.revokedAt?.toISOString() ?? null,
-  }
+  return grants.map((grant) => {
+    let granteeName = ""
+    let institutionName = ""
+    let registrationNumber: string | null = null
+
+    if (grant.grantType === "individual") {
+      const doctor = doctorById.get(grant.granteeId)
+      granteeName = doctor
+        ? `Dr. ${doctor.firstName ?? ""} ${doctor.lastName ?? ""}`.trim()
+        : grant.granteeId
+      registrationNumber =
+        profileByDoctorId.get(grant.granteeId)?.registrationNumber ?? null
+      const aff = firstAffByDoctorId.get(grant.granteeId)
+      institutionName = aff?.institutionName ?? aff?.practiceName ?? ""
+    } else {
+      const dept = deptById.get(grant.granteeId)
+      granteeName = dept?.deptName ?? grant.granteeId
+      institutionName = dept?.instName ?? ""
+    }
+
+    return {
+      id: grant.id,
+      patientId: grant.patientId,
+      grantType: grant.grantType as "individual" | "department",
+      granteeId: grant.granteeId,
+      granteeName,
+      institutionName,
+      registrationNumber,
+      grantedAt: grant.grantedAt.toISOString(),
+      revokedAt: grant.revokedAt?.toISOString() ?? null,
+    }
+  })
 }
 
 export function registerAccessRoutes(app: AppRouter) {
@@ -187,9 +225,7 @@ export function registerAccessRoutes(app: AppRouter) {
       .where(
         and(eq(accessGrant.patientId, u.id), isNull(accessGrant.revokedAt))
       )
-    return c.json(
-      await Promise.all(grants.map((g) => buildGrantResponse(db, g)))
-    )
+    return c.json(await buildGrantResponses(db, grants))
   })
 
   // POST /patients/me/grants
@@ -223,7 +259,8 @@ export function registerAccessRoutes(app: AppRouter) {
       revokedAt: null,
     }
     await db.insert(accessGrant).values(newGrant)
-    return c.json(await buildGrantResponse(db, newGrant), 201)
+    const [response] = await buildGrantResponses(db, [newGrant])
+    return c.json(response, 201)
   })
 
   // DELETE /patients/me/grants/{grantId}

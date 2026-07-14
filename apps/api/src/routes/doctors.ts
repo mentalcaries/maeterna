@@ -19,42 +19,18 @@ import {
   PatientSchema,
   ReadingSchema,
   ThresholdsSchema,
-  RegistrationNumberSchema,
   PhoneNumberSchema,
   responses,
 } from "../schemas"
 import { computeSeverity, resolveThresholds } from "../lib/thresholds"
 import { serializeReading } from "../lib/readings"
 import { doctorHasAccess } from "../lib/access"
+import { mapAffiliation } from "../lib/affiliations"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function mapAffiliation(row: {
-  id: string
-  institutionId: string | null
-  institutionName: string | null
-  departmentId: string | null
-  departmentName: string | null
-  practiceName: string | null
-}) {
-  return {
-    id: row.id,
-    type: (row.institutionId ? "institution" : "practice") as
-      | "institution"
-      | "practice",
-    institution: row.institutionId
-      ? { id: row.institutionId, name: row.institutionName ?? "" }
-      : null,
-    department:
-      row.institutionId && row.departmentId
-        ? { id: row.departmentId, name: row.departmentName ?? "" }
-        : null,
-    practiceName: row.practiceName,
-  }
-}
 
 async function buildDoctorResponse(db: DB, userId: string) {
   const doctorUser = await db
@@ -218,7 +194,6 @@ const patchMeRoute = createRoute({
           schema: z.object({
             firstName: z.string().min(1).optional(),
             lastName: z.string().min(1).optional(),
-            registrationNumber: RegistrationNumberSchema.optional(),
             phoneNumber: PhoneNumberSchema.optional(),
           }),
         },
@@ -421,8 +396,7 @@ export function registerDoctorRoutes(app: AppRouter) {
 
   // PATCH /doctors/me
   app.openapi(patchMeRoute, async (c) => {
-    const { firstName, lastName, registrationNumber, phoneNumber } =
-      c.req.valid("json")
+    const { firstName, lastName, phoneNumber } = c.req.valid("json")
     const db = createDb(c.env.DB)
     const doctorId = c.get("user").id
 
@@ -436,7 +410,7 @@ export function registerDoctorRoutes(app: AppRouter) {
         .where(eq(userTable.id, doctorId))
     }
 
-    if (registrationNumber !== undefined || phoneNumber !== undefined) {
+    if (phoneNumber !== undefined) {
       const now = new Date()
       const current = await db
         .select()
@@ -448,18 +422,13 @@ export function registerDoctorRoutes(app: AppRouter) {
         .values({
           id: crypto.randomUUID(),
           userId: doctorId,
-          registrationNumber:
-            registrationNumber ?? current?.registrationNumber ?? "",
-          phoneNumber: phoneNumber ?? current?.phoneNumber ?? "",
+          registrationNumber: current?.registrationNumber ?? "",
+          phoneNumber,
           updatedAt: now,
         })
         .onConflictDoUpdate({
           target: doctorProfile.userId,
-          set: {
-            ...(registrationNumber !== undefined && { registrationNumber }),
-            ...(phoneNumber !== undefined && { phoneNumber }),
-            updatedAt: now,
-          },
+          set: { phoneNumber, updatedAt: now },
         })
     }
 

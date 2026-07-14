@@ -70,6 +70,7 @@ export function registerSearchRoutes(app: AppRouter) {
       .where(
         and(
           eq(userTable.role, "doctor"),
+          eq(userTable.status, "active"),
           or(
             like(userTable.firstName, pattern),
             like(userTable.lastName, pattern)

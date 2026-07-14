@@ -28,7 +28,6 @@ function DoctorSettingsPage() {
   const [initialized, setInitialized] = useState(false)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [registrationNumber, setRegistrationNumber] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [profileError, setProfileError] = useState("")
   const [profileSuccess, setProfileSuccess] = useState(false)
@@ -57,7 +56,6 @@ function DoctorSettingsPage() {
     if (doctor && !initialized) {
       setFirstName(doctor.firstName ?? "")
       setLastName(doctor.lastName ?? "")
-      setRegistrationNumber(doctor.registrationNumber ?? "")
       setPhoneNumber(doctor.phoneNumber ?? "")
       setInitialized(true)
     }
@@ -67,7 +65,6 @@ function DoctorSettingsPage() {
     mutationFn: (body: {
       firstName: string
       lastName: string
-      registrationNumber?: string
       phoneNumber: string
     }) => apiClient.PATCH("/doctors/me", { body }),
     onSuccess: () => {
@@ -76,8 +73,6 @@ function DoctorSettingsPage() {
       setProfileSuccess(true)
     },
   })
-
-  const registrationNumberSet = !!doctor?.registrationNumber
 
   function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -91,10 +86,6 @@ function DoctorSettingsPage() {
       setProfileError("Last name is required.")
       return
     }
-    if (!registrationNumberSet && !registrationNumber.trim()) {
-      setProfileError("Medical registration number is required.")
-      return
-    }
     if (!phoneNumber.trim()) {
       setProfileError("Phone number is required.")
       return
@@ -106,9 +97,6 @@ function DoctorSettingsPage() {
     patchProfile.mutate({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      ...(registrationNumberSet
-        ? {}
-        : { registrationNumber: registrationNumber.trim() }),
       phoneNumber: phoneNumber.trim(),
     })
   }
@@ -180,25 +168,7 @@ function DoctorSettingsPage() {
                 <Label className="text-base font-medium tracking-normal normal-case">
                   Medical registration number
                 </Label>
-                {registrationNumberSet ? (
-                  <p className="text-base">{doctor?.registrationNumber}</p>
-                ) : (
-                  <>
-                    <Input
-                      id="registrationNumber"
-                      className="text-base"
-                      placeholder="Registration number"
-                      value={registrationNumber}
-                      onChange={(e) => {
-                        setRegistrationNumber(e.target.value)
-                        setProfileSuccess(false)
-                      }}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Shown to patients so they can verify your registration.
-                    </p>
-                  </>
-                )}
+                <p className="text-base">{doctor?.registrationNumber}</p>
               </div>
 
               <div className="flex flex-1 flex-col gap-1.5">

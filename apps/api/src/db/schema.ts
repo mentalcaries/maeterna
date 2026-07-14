@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import {
   sqliteTable,
   text,
@@ -125,7 +126,9 @@ export const doctorAffiliation = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [
-    uniqueIndex("doctor_affiliation_unique_idx").on(t.doctorId, t.departmentId),
+    uniqueIndex("doctor_affiliation_institution_unique_idx")
+      .on(t.doctorId, t.institutionId)
+      .where(sql`${t.institutionId} is not null`),
   ]
 )
 

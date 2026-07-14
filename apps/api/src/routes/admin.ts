@@ -21,6 +21,7 @@ import {
   responses,
 } from "../schemas"
 import { raise } from "../lib/errors"
+import { mapAffiliation } from "../lib/affiliations"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
@@ -42,30 +43,6 @@ async function buildPatientResponse(db: DB, p: typeof userTable.$inferSelect) {
     role: "patient" as const,
     status: p.status as "active" | "suspended",
     createdAt: p.createdAt.toISOString(),
-  }
-}
-
-function mapAffiliation(row: {
-  id: string
-  institutionId: string | null
-  institutionName: string | null
-  departmentId: string | null
-  departmentName: string | null
-  practiceName: string | null
-}) {
-  return {
-    id: row.id,
-    type: (row.institutionId ? "institution" : "practice") as
-      | "institution"
-      | "practice",
-    institution: row.institutionId
-      ? { id: row.institutionId, name: row.institutionName ?? "" }
-      : null,
-    department:
-      row.institutionId && row.departmentId
-        ? { id: row.departmentId, name: row.departmentName ?? "" }
-        : null,
-    practiceName: row.practiceName,
   }
 }
 
@@ -272,6 +249,8 @@ export function registerAdminRoutes(app: AppRouter) {
       .where(eq(userTable.id, userId))
       .get()
     if (!target) raise(404, "User not found")
+    if (status === "suspended" && userId === admin.id)
+      raise(400, "Cannot suspend your own account")
 
     await db
       .update(userTable)

@@ -1,6 +1,12 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router"
+import { useSyncExternalStore } from "react"
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen"
+import {
+  isAccountSuspended,
+  subscribeAccountSuspended,
+} from "@/lib/account-suspended"
 
 export const Route = createRootRoute({
   notFoundComponent: () => (
@@ -13,9 +19,14 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const suspended = useSyncExternalStore(
+    subscribeAccountSuspended,
+    isAccountSuspended
+  )
+
   return (
     <>
-      <Outlet />
+      {suspended ? <AccountSuspendedScreen /> : <Outlet />}
       <footer className="fixed right-0 bottom-0 left-0 z-30 border-t border-border bg-background py-2 text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()}{" "}
         <a href="https://fullstackcollective.com">Full Stack Collective</a>

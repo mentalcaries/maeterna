@@ -19,7 +19,8 @@ import {
   ErrorSchema,
   responses,
 } from "../schemas"
-import { raise } from "../lib/errors"
+import { raise, isUniqueConstraintError } from "../lib/errors"
+import { mapAffiliation } from "../lib/affiliations"
 import type { AppRouter } from "../types"
 
 const completeProfileRoute = createRoute({
@@ -119,30 +120,6 @@ const deleteAffiliationRoute = createRoute({
     ...responses,
   },
 })
-
-function mapAffiliation(row: {
-  id: string
-  institutionId: string | null
-  institutionName: string | null
-  departmentId: string | null
-  departmentName: string | null
-  practiceName: string | null
-}) {
-  return {
-    id: row.id,
-    type: (row.institutionId ? "institution" : "practice") as
-      | "institution"
-      | "practice",
-    institution: row.institutionId
-      ? { id: row.institutionId, name: row.institutionName ?? "" }
-      : null,
-    department:
-      row.institutionId && row.departmentId
-        ? { id: row.departmentId, name: row.departmentName ?? "" }
-        : null,
-    practiceName: row.practiceName,
-  }
-}
 
 const setRoleRoute = createRoute({
   method: "patch",
@@ -402,14 +379,20 @@ export function registerProfileRoutes(app: AppRouter) {
       if (existing) raise(409, "Affiliation already exists")
 
       const id = crypto.randomUUID()
-      await db.insert(doctorAffiliation).values({
-        id,
-        doctorId: currentUser.id,
-        institutionId: body.institutionId,
-        departmentId: dept?.id ?? null,
-        practiceName: null,
-        createdAt: now,
-      })
+      try {
+        await db.insert(doctorAffiliation).values({
+          id,
+          doctorId: currentUser.id,
+          institutionId: body.institutionId,
+          departmentId: dept?.id ?? null,
+          practiceName: null,
+          createdAt: now,
+        })
+      } catch (err) {
+        if (isUniqueConstraintError(err))
+          raise(409, "Affiliation already exists")
+        throw err
+      }
 
       return c.json(
         {
