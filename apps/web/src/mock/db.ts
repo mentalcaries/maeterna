@@ -36,9 +36,6 @@ export interface Doctor extends User {
   role: "doctor"
   specialty: string
   onboardingComplete?: boolean
-  mbttNumber?: string
-  mbttVerified?: boolean
-  pendingVerification?: boolean
 }
 
 export interface Reading {
@@ -101,11 +98,6 @@ export interface DoctorInstitution {
   institutionId: string
   institutionName: string
   department: string
-}
-
-export interface MBTTEntry {
-  number: string
-  name: string
 }
 
 function daysAgo(days: number, hour = 8, minute = 0): string {
@@ -759,13 +751,6 @@ export const doctorInstitutions: DoctorInstitution[] = [
   },
 ]
 
-export const mbttRegistry: MBTTEntry[] = [
-  { number: "MBTT-2847", name: "Dr. Marlon Prescod" },
-  { number: "MBTT-1653", name: "Dr. Tanya Deoraj" },
-  { number: "MBTT-0391", name: "Dr. Cyril Ramlal" },
-  { number: "MBTT-4502", name: "Dr. Priya Mohammed" },
-]
-
 export const accessGrants: AccessGrant[] = []
 
 export const accessLogs: AccessLog[] = [
@@ -990,18 +975,6 @@ export function getDoctorInstitutions(doctorId: string): DoctorInstitution[] {
   return doctorInstitutions.filter((di) => di.doctorId === doctorId)
 }
 
-export function verifyMBTT(number: string): MBTTEntry | null {
-  return mbttRegistry.find((e) => e.number === number) ?? null
-}
-
-export function setDoctorPending(doctorId: string, mbttNumber: string): void {
-  const doctor = doctors.find((d) => d.id === doctorId)
-  if (!doctor) return
-  doctor.mbttNumber = mbttNumber
-  doctor.pendingVerification = true
-  doctor.mbttVerified = false
-}
-
 export function completeDoctorOnboarding(
   doctorId: string,
   affiliations: {
@@ -1012,7 +985,6 @@ export function completeDoctorOnboarding(
 ): void {
   const doctor = doctors.find((d) => d.id === doctorId)
   if (!doctor) return
-  doctor.mbttVerified = true
   doctor.onboardingComplete = true
   affiliations.forEach((a) => {
     doctorInstitutions.push({

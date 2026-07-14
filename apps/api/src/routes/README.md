@@ -60,10 +60,8 @@ All patient-scoped routes are gated by `doctorHasAccess` (shared with `readings.
 ## `admin.ts`
 
 - `GET /admin/users` — list/filter all users by role and status.
-- `PATCH /admin/users/{userId}/status` — suspend or reactivate an account.
-- `POST /admin/users/{userId}/approve` — approve a doctor stuck in `pending_verification`, flipping `doctorProfile.verified`.
+- `PATCH /admin/users/{userId}/status` — suspend or reactivate an account. An admin cannot suspend their own account (`400`).
 - `POST /admin/invites` — send an email invite to a new patient or doctor. _(Email sending itself is a `TODO` stub.)_
-- `POST /admin/sync-mbtt` / `GET /admin/sync-mbtt/status` — manually trigger or check the status of the MBTT doctor registry sync.
 - `GET /admin/audit-log` — view platform audit log entries, newest first. _(`targetName` resolution is a `TODO` stub — currently always `null`.)_
 
 Every route requires the `admin` role. All mutating actions write an `auditLog` entry via the local `writeAuditLog` helper.
@@ -75,13 +73,15 @@ Onboarding flow, run after a user's first sign-in:
 - `PATCH /profile/role` — set your role once (`patient` or `doctor`); `409` if already set.
 - `POST /profile/complete` — finalize your profile.
   - Patients: just need `dateOfBirth`.
-  - Doctors: goes through a **name-only** MBTT registry match — case-insensitive last name, then first name must appear as a whole word in the matched entry's first name. On no match, returns `{ verificationFailed: true }` with **no DB writes** (frontend then offers "submit for review").
-- `POST /profile/complete/submit-for-review` — for doctors who failed the registry match; sets status to `pending_verification` pending admin approval.
-- `PUT /profile/doctor/affiliations` / `DELETE /profile/doctor/affiliations/{affiliationId}` _(doctor only)_ — replace or remove institution/department affiliations.
+  - Doctors: self-attest a `registrationNumber` and `phoneNumber` (shape-validated only, no external registry check) and are `active` immediately. `registrationNumber` is written once here — `PATCH /doctors/me` cannot change it afterwards.
+- `GET`/`POST`/`DELETE /profile/doctor/affiliations` _(doctor only)_ — list, add, or remove institution/private-practice affiliations.
 
 ## Shared helpers
 
 - `../lib/access.ts` — `doctorHasAccess(db, doctorId, patientId)`: checks whether a doctor has an active individual or department-level access grant for a patient. Used by both `readings.ts` and `doctors.ts`.
 - `../lib/thresholds.ts` — `computeSeverity(type, context, value1, value2, thresholds)` (pure, returns `"normal" | "high"`), `DEFAULT_THRESHOLDS`, and `resolveThresholds(db, patientId)` (fetches the patient's custom threshold row or falls back to defaults).
 - `../lib/readings.ts` — `serializeReading(row, thresholds)`: shared response serializer that computes `severity` on read.
-- `../lib/errors.ts` — `raise(status, message)` helper for throwing typed HTTP errors.
+- `../lib/errors.ts` — `raise(status, message)` helper for throwing typed HTTP errors; `isUniqueConstraintError(err)` detects a racing unique-index violation.
+- `../lib/affiliations.ts` — `mapAffiliation(row)`: shared serializer for a `doctor_affiliation` row (used by `admin.ts`, `doctors.ts`, `profile.ts`).
+
+All authenticated routes (every route except `GET /invites/{token}`) pass through `sessionMiddleware`, which now also rejects `status = 'suspended'` users with a `403 ACCOUNT_SUSPENDED` before any route logic runs.

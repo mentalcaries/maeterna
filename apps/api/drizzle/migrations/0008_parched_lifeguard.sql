@@ -1,0 +1,2 @@
+DROP INDEX `doctor_affiliation_unique_idx`;--> statement-breakpoint
+CREATE UNIQUE INDEX `doctor_affiliation_institution_unique_idx` ON `doctor_affiliation` (`doctor_id`,`institution_id`) WHERE "doctor_affiliation"."institution_id" is not null;

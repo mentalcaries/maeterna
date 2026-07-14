@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import {
   RiGroupLine,
   RiStethoscopeLine,
-  RiTimeLine,
   RiUserForbidLine,
 } from "@remixicon/react"
 import { apiClient } from "@/lib/api-client"
@@ -16,7 +15,7 @@ export const Route = createFileRoute("/admin/dashboard")({
 function AdminDashboardPage() {
   const navigate = useNavigate()
 
-  const [patients, doctors, pending, suspended] = useQueries({
+  const [patients, doctors, suspended] = useQueries({
     queries: [
       {
         queryKey: ["admin-count", "patient"] as const,
@@ -32,17 +31,6 @@ function AdminDashboardPage() {
         queryFn: async () => {
           const res = await apiClient.GET("/admin/users", {
             params: { query: { role: "doctor", limit: 1 } },
-          })
-          return res.data?.total ?? 0
-        },
-      },
-      {
-        queryKey: ["admin-count", "pending_verification"] as const,
-        queryFn: async () => {
-          const res = await apiClient.GET("/admin/users", {
-            params: {
-              query: { status: "pending_verification", limit: 1 },
-            },
           })
           return res.data?.total ?? 0
         },
@@ -73,13 +61,6 @@ function AdminDashboardPage() {
       icon: RiStethoscopeLine,
       filterRole: "doctor" as const,
       filterStatus: undefined,
-    },
-    {
-      label: "Pending Verification",
-      value: pending.data ?? "—",
-      icon: RiTimeLine,
-      filterRole: undefined,
-      filterStatus: "pending_verification" as const,
     },
     {
       label: "Suspended Accounts",
@@ -143,12 +124,6 @@ function AdminDashboardPage() {
             className="rounded border border-border px-4 py-2 text-xs font-semibold tracking-wider uppercase transition-colors hover:bg-muted"
           >
             Invite user
-          </Link>
-          <Link
-            to="/admin/pending"
-            className="rounded border border-border px-4 py-2 text-xs font-semibold tracking-wider uppercase transition-colors hover:bg-muted"
-          >
-            Review pending
           </Link>
           <Link
             to="/admin/audit-log"

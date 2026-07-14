@@ -15,8 +15,6 @@ import {
   RiFileListLine,
   RiLogoutBoxLine,
   RiDashboardLine,
-  RiTimeLine,
-  RiRefreshLine,
 } from "@remixicon/react"
 import { useSession } from "@/lib/session"
 import { getAppUser, authClient } from "@/lib/auth-client"
@@ -30,18 +28,12 @@ const NAV = [
     label: "Dashboard",
   },
   { to: "/admin/users" as const, icon: RiGroupLine, label: "Users" },
-  {
-    to: "/admin/pending" as const,
-    icon: RiTimeLine,
-    label: "Pending Approvals",
-  },
   { to: "/admin/invite" as const, icon: RiUserAddLine, label: "Invite" },
   {
     to: "/admin/audit-log" as const,
     icon: RiFileListLine,
     label: "Audit Log",
   },
-  { to: "/admin/sync" as const, icon: RiRefreshLine, label: "MBTT Sync" },
 ]
 
 function AdminLayout() {

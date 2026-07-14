@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   user as userTable,
@@ -8,18 +8,19 @@ import {
   doctorAffiliation,
   institution,
   department,
-  mbttRegistry,
 } from "../db/schema"
 import { sessionMiddleware } from "../middleware/session"
 import {
   PatientSchema,
   DoctorSchema,
-  DoctorVerificationFailedSchema,
+  DoctorAffiliationSchema,
+  RegistrationNumberSchema,
+  PhoneNumberSchema,
   ErrorSchema,
   responses,
 } from "../schemas"
-import { raise } from "../lib/errors"
-import { isValidRegistration } from "../lib/mbtt"
+import { raise, isUniqueConstraintError } from "../lib/errors"
+import { mapAffiliation } from "../lib/affiliations"
 import type { AppRouter } from "../types"
 
 const completeProfileRoute = createRoute({
@@ -36,6 +37,8 @@ const completeProfileRoute = createRoute({
             firstName: z.string().min(1),
             lastName: z.string().min(1),
             dateOfBirth: z.string().optional(),
+            registrationNumber: RegistrationNumberSchema.optional(),
+            phoneNumber: PhoneNumberSchema.optional(),
           }),
         },
       },
@@ -45,11 +48,7 @@ const completeProfileRoute = createRoute({
     200: {
       content: {
         "application/json": {
-          schema: z.union([
-            PatientSchema,
-            DoctorSchema,
-            DoctorVerificationFailedSchema,
-          ]),
+          schema: z.union([PatientSchema, DoctorSchema]),
         },
       },
       description: "Profile saved",
@@ -58,34 +57,53 @@ const completeProfileRoute = createRoute({
   },
 })
 
-const saveAffiliationsRoute = createRoute({
-  method: "put",
+const listAffiliationsRoute = createRoute({
+  method: "get",
   path: "/profile/doctor/affiliations",
   tags: ["Profile"],
-  summary: "Save doctor institution and department affiliations",
+  summary: "List own doctor affiliations",
+  responses: {
+    200: {
+      content: {
+        "application/json": { schema: z.array(DoctorAffiliationSchema) },
+      },
+      description: "Own affiliations",
+    },
+    ...responses,
+  },
+})
+
+const createAffiliationRoute = createRoute({
+  method: "post",
+  path: "/profile/doctor/affiliations",
+  tags: ["Profile"],
+  summary: "Add a doctor institution or private-practice affiliation",
   request: {
     body: {
       required: true,
       content: {
         "application/json": {
-          schema: z.object({
-            affiliations: z
-              .array(
-                z.object({
-                  institutionId: z.string().uuid(),
-                  departmentId: z.string().uuid(),
-                })
-              )
-              .min(1),
-          }),
+          schema: z.union([
+            z.object({
+              institutionId: z.string().uuid(),
+              departmentId: z.string().uuid().optional(),
+            }),
+            z.object({
+              practiceName: z.string().trim().min(1).max(120),
+            }),
+          ]),
         },
       },
     },
   },
   responses: {
-    200: {
-      content: { "application/json": { schema: DoctorSchema } },
-      description: "Affiliations saved",
+    201: {
+      content: { "application/json": { schema: DoctorAffiliationSchema } },
+      description: "Affiliation created",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorSchema } },
+      description: "Duplicate affiliation",
     },
     ...responses,
   },
@@ -99,33 +117,6 @@ const deleteAffiliationRoute = createRoute({
   request: { params: z.object({ affiliationId: z.string().uuid() }) },
   responses: {
     204: { description: "Affiliation deleted" },
-    ...responses,
-  },
-})
-
-const submitForReviewRoute = createRoute({
-  method: "post",
-  path: "/profile/complete/submit-for-review",
-  tags: ["Profile"],
-  summary: "Submit doctor profile for manual MBTT verification review",
-  request: {
-    body: {
-      required: true,
-      content: {
-        "application/json": {
-          schema: z.object({
-            firstName: z.string().min(1),
-            lastName: z.string().min(1),
-          }),
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: { "application/json": { schema: DoctorSchema } },
-      description: "Submitted for review",
-    },
     ...responses,
   },
 })
@@ -238,22 +229,10 @@ export function registerProfileRoutes(app: AppRouter) {
       })
     }
 
-    // doctor — compute verification first, no DB writes on failure
-    const candidates = await db
-      .select()
-      .from(mbttRegistry)
-      .where(sql`lower(${mbttRegistry.lastName}) = lower(${body.lastName})`)
-
-    const match = candidates.find((entry) => {
-      const registryFirstNames = entry.firstName.toLowerCase().split(" ")
-      return registryFirstNames.includes(body.firstName.toLowerCase())
-    })
-
-    const verified = match !== undefined && isValidRegistration(match.status)
-
-    if (!verified) {
-      return c.json({ verificationFailed: true as const }, 200)
-    }
+    // doctor — self-attested, no external verification
+    if (!body.registrationNumber)
+      raise(422, "registrationNumber is required for doctors")
+    if (!body.phoneNumber) raise(422, "phoneNumber is required for doctors")
 
     await db
       .update(userTable)
@@ -271,13 +250,15 @@ export function registerProfileRoutes(app: AppRouter) {
       .values({
         id: crypto.randomUUID(),
         userId: currentUser.id,
-        verified: true,
+        registrationNumber: body.registrationNumber,
+        phoneNumber: body.phoneNumber,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: doctorProfile.userId,
         set: {
-          verified: true,
+          registrationNumber: body.registrationNumber,
+          phoneNumber: body.phoneNumber,
           updatedAt: now,
         },
       })
@@ -299,70 +280,9 @@ export function registerProfileRoutes(app: AppRouter) {
       lastName: updated!.lastName ?? "",
       email: updated!.email,
       registrationNumber: profile?.registrationNumber ?? null,
-      verified: true,
+      phoneNumber: profile?.phoneNumber ?? null,
       role: updated!.role as "doctor",
       status: updated!.status as "active",
-      affiliations: [],
-      createdAt: updated!.createdAt.toISOString(),
-    })
-  })
-
-  // POST /profile/complete/submit-for-review
-  app.openapi(submitForReviewRoute, async (c) => {
-    const currentUser = c.get("user")
-    if (currentUser.role !== "doctor")
-      raise(403, "Only doctors can submit for review")
-    const body = c.req.valid("json")
-    const db = createDb(c.env.DB)
-    const now = new Date()
-
-    await db
-      .update(userTable)
-      .set({
-        firstName: body.firstName,
-        lastName: body.lastName,
-        name: `${body.firstName} ${body.lastName}`,
-        status: "pending_verification",
-        updatedAt: now,
-      })
-      .where(eq(userTable.id, currentUser.id))
-
-    await db
-      .insert(doctorProfile)
-      .values({
-        id: crypto.randomUUID(),
-        userId: currentUser.id,
-        verified: false,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: doctorProfile.userId,
-        set: {
-          verified: false,
-          updatedAt: now,
-        },
-      })
-
-    const updated = await db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, currentUser.id))
-      .get()
-    const profile = await db
-      .select()
-      .from(doctorProfile)
-      .where(eq(doctorProfile.userId, currentUser.id))
-      .get()
-
-    return c.json({
-      id: updated!.id,
-      firstName: updated!.firstName ?? "",
-      lastName: updated!.lastName ?? "",
-      email: updated!.email,
-      registrationNumber: profile?.registrationNumber ?? null,
-      verified: false,
-      role: updated!.role as "doctor",
-      status: "pending_verification" as const,
       affiliations: [],
       createdAt: updated!.createdAt.toISOString(),
     })
@@ -386,66 +306,139 @@ export function registerProfileRoutes(app: AppRouter) {
     return new Response(null, { status: 204 }) as never
   })
 
-  // PUT /profile/doctor/affiliations
-  app.openapi(saveAffiliationsRoute, async (c) => {
+  // GET /profile/doctor/affiliations
+  app.openapi(listAffiliationsRoute, async (c) => {
     const currentUser = c.get("user")
     if (currentUser.role !== "doctor")
       raise(403, "Only doctors can manage affiliations")
-
-    const { affiliations } = c.req.valid("json")
     const db = createDb(c.env.DB)
 
-    await db
-      .delete(doctorAffiliation)
-      .where(eq(doctorAffiliation.doctorId, currentUser.id))
-    if (affiliations.length > 0) {
-      await db.insert(doctorAffiliation).values(
-        affiliations.map((a) => ({
-          id: crypto.randomUUID(),
-          doctorId: currentUser.id,
-          institutionId: a.institutionId,
-          departmentId: a.departmentId,
-        }))
-      )
-    }
-
-    const doctorUser = await db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, currentUser.id))
-      .get()
-    const profile = await db
-      .select()
-      .from(doctorProfile)
-      .where(eq(doctorProfile.userId, currentUser.id))
-      .get()
-    const affRows = await db
+    const rows = await db
       .select({
         id: doctorAffiliation.id,
         institutionId: doctorAffiliation.institutionId,
         institutionName: institution.name,
         departmentId: doctorAffiliation.departmentId,
         departmentName: department.name,
+        practiceName: doctorAffiliation.practiceName,
       })
       .from(doctorAffiliation)
-      .innerJoin(
+      .leftJoin(
         institution,
         eq(doctorAffiliation.institutionId, institution.id)
       )
-      .innerJoin(department, eq(doctorAffiliation.departmentId, department.id))
+      .leftJoin(department, eq(doctorAffiliation.departmentId, department.id))
       .where(eq(doctorAffiliation.doctorId, currentUser.id))
+      .orderBy(doctorAffiliation.createdAt)
 
-    return c.json({
-      id: doctorUser!.id,
-      firstName: doctorUser!.firstName ?? "",
-      lastName: doctorUser!.lastName ?? "",
-      email: doctorUser!.email,
-      registrationNumber: profile?.registrationNumber ?? null,
-      verified: profile?.verified ?? false,
-      role: "doctor" as const,
-      status: doctorUser!.status as "active",
-      affiliations: affRows,
-      createdAt: doctorUser!.createdAt.toISOString(),
+    return c.json(rows.map(mapAffiliation))
+  })
+
+  // POST /profile/doctor/affiliations
+  app.openapi(createAffiliationRoute, async (c) => {
+    const currentUser = c.get("user")
+    if (currentUser.role !== "doctor")
+      raise(403, "Only doctors can manage affiliations")
+    const body = c.req.valid("json")
+    const db = createDb(c.env.DB)
+    const now = new Date()
+
+    if ("institutionId" in body) {
+      const inst = await db
+        .select()
+        .from(institution)
+        .where(eq(institution.id, body.institutionId))
+        .get()
+      if (!inst) raise(404, "Institution not found")
+
+      let dept: { id: string; name: string } | null = null
+      if (body.departmentId) {
+        const deptRow = await db
+          .select()
+          .from(department)
+          .where(eq(department.id, body.departmentId))
+          .get()
+        if (!deptRow || deptRow.institutionId !== body.institutionId)
+          raise(422, "Department does not belong to institution")
+        dept = { id: deptRow.id, name: deptRow.name }
+      }
+
+      const existing = await db
+        .select({ id: doctorAffiliation.id })
+        .from(doctorAffiliation)
+        .where(
+          and(
+            eq(doctorAffiliation.doctorId, currentUser.id),
+            eq(doctorAffiliation.institutionId, body.institutionId),
+            dept
+              ? eq(doctorAffiliation.departmentId, dept.id)
+              : isNull(doctorAffiliation.departmentId)
+          )
+        )
+        .get()
+      if (existing) raise(409, "Affiliation already exists")
+
+      const id = crypto.randomUUID()
+      try {
+        await db.insert(doctorAffiliation).values({
+          id,
+          doctorId: currentUser.id,
+          institutionId: body.institutionId,
+          departmentId: dept?.id ?? null,
+          practiceName: null,
+          createdAt: now,
+        })
+      } catch (err) {
+        if (isUniqueConstraintError(err))
+          raise(409, "Affiliation already exists")
+        throw err
+      }
+
+      return c.json(
+        {
+          id,
+          type: "institution" as const,
+          institution: { id: inst.id, name: inst.name },
+          department: dept,
+          practiceName: null,
+        },
+        201
+      )
+    }
+
+    // practice
+    const practiceName = body.practiceName.trim()
+    const existing = await db
+      .select({ id: doctorAffiliation.id })
+      .from(doctorAffiliation)
+      .where(
+        and(
+          eq(doctorAffiliation.doctorId, currentUser.id),
+          sql`lower(${doctorAffiliation.practiceName}) = lower(${practiceName})`
+        )
+      )
+      .get()
+    if (existing) raise(409, "Affiliation already exists")
+
+    const id = crypto.randomUUID()
+    await db.insert(doctorAffiliation).values({
+      id,
+      doctorId: currentUser.id,
+      institutionId: null,
+      departmentId: null,
+      practiceName,
+      createdAt: now,
     })
+
+    return c.json(
+      {
+        id,
+        type: "practice" as const,
+        institution: null,
+        department: null,
+        practiceName,
+      },
+      201
+    )
   })
 }

@@ -3,7 +3,6 @@ import { HTTPException } from "hono/http-exception"
 import { cors } from "hono/cors"
 import { getAuth } from "./lib/auth"
 import { STATUS_CODES } from "./lib/errors"
-import { syncMBTTRegistry } from "./lib/mbtt-sync"
 import { registerProfileRoutes } from "./routes/profile"
 import { registerPatientRoutes } from "./routes/patients"
 import { registerReadingRoutes } from "./routes/readings"
@@ -78,15 +77,4 @@ app.doc("/openapi.json", {
 
 export default {
   fetch: app.fetch,
-  async scheduled(
-    _event: ScheduledController,
-    env: CloudflareBindings,
-    ctx: ExecutionContext
-  ) {
-    ctx.waitUntil(
-      syncMBTTRegistry(env.DB).catch((err) =>
-        console.error("MBTT sync failed:", err)
-      )
-    )
-  },
 }

@@ -21,7 +21,7 @@ pnpm run db:studio    # Open Drizzle Studio for the D1 database
 
 The `.dev.vars` file holds the three env vars drizzle-kit needs (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_D1_TOKEN`). These are for drizzle-kit only — the Worker runtime accesses D1 through the `DB` binding defined in `wrangler.jsonc`.
 
-See `DB.md` for local D1 (Miniflare) setup — `db:migrate` above only ever applies to the remote database.
+Local D1 (Miniflare) is provisioned automatically by `wrangler dev` — no separate setup file; see `README.md`'s "Running locally" and "Local dev seed data" sections. `db:migrate` above only ever applies to the remote database.
 
 ## Architecture
 
@@ -34,12 +34,12 @@ The database schema lives in `src/db/schema.ts` (referenced by `drizzle.config.t
 **Domain model** (from the OpenAPI spec):
 
 - **Three roles**: `patient`, `doctor`, `admin`. Role is attached to the user record and drives all authorization.
-- **Readings**: Two types — `glucose` (mmol/L, single value) and `blood_pressure` (mmHg, systolic + diastolic). Each reading has a `context` (e.g. `fasting`, `post_meal`, `morning`), a `severity` computed against thresholds (`normal` / `warning` / `critical`), and a `loggedById` that can be either the patient or a doctor.
+- **Readings**: Two types — `glucose` (mmol/L, single value) and `blood_pressure` (mmHg, systolic + diastolic). Each reading has a `context` (e.g. `fasting`, `post_meal`, `morning`), a `severity` computed against thresholds (`normal` / `high`), and a `loggedById` that can be either the patient or a doctor.
 - **Thresholds**: Platform defaults exist for glucose and BP; doctors can set per-patient custom thresholds. Severity is computed at write time against whichever set applies.
 - **Access grants**: Patients explicitly grant access to either an individual doctor (`grantType: individual`) or an entire department (`grantType: department`). Grants can be revoked. Doctor reads of a patient record are logged in `access_log`.
-- **Doctor affiliations**: Doctors belong to one or more institution + department pairs. Institutions are typed (`hospital`, `health_centre`, `private_practice`).
+- **Doctor affiliations**: Doctors have zero or more affiliations (`doctor_affiliation`), each either a seeded public `institution` (optionally with a `department` for access-grant purposes) or a free-text private-practice name (`practiceName`) — exactly one of `institutionId`/`practiceName` is set per row, enforced by a DB CHECK constraint. Managed via `GET`/`POST`/`DELETE /profile/doctor/affiliations`. Institutions are typed (`hospital`, `health_centre`, `private_practice`).
 - **Invites**: Doctors create invite tokens (scoped to a department) that patients use during onboarding to pre-wire an access grant. One public endpoint (`GET /invites/{token}`) requires no auth. Admin can also send invites by email.
-- **Onboarding flow**: After first sign-in (magic link / passkey / Google via Better Auth), users hit `POST /profile/complete`. Patients supply DOB; doctors supply only `firstName`/`lastName`, which triggers a **name-only** MBTT registry lookup: candidates are matched by case-insensitive exact last-name match, then the entered first name must appear as a whole word in the matched entry's first name (see `mbttRegistry` query in `src/routes/profile.ts`). There is no member ID / registration number in this flow — `doctorProfile.registrationNumber` is nullable in the DB and unused by onboarding, kept only for potential future use. On lookup miss, doctors can call `POST /profile/complete/submit-for-review` (also name-only) to land in `pending_verification` until admin approves via `POST /admin/users/{userId}/approve`.
+- **Onboarding flow**: After first sign-in (magic link / passkey / Google via Better Auth), users hit `POST /profile/complete`. Patients supply DOB; doctors self-attest a `registrationNumber` and `phoneNumber` (both required, validated for shape only — no external registry check) and are `active` immediately. Patients verify a doctor themselves via the registration number shown in search results and grant details. There is no verification-review/approval flow or `pending_verification` status.
 
 **Auth**: Bearer JWT issued by Better Auth. All routes require auth except `GET /invites/{token}`. The `admin` tag routes are restricted to the `admin` role.
 
