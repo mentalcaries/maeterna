@@ -251,6 +251,32 @@ components:
           type: string
           format: date-time
 
+    HospitalSharingOption:
+      type: object
+      required:
+        - institutionId
+        - departmentId
+        - displayName
+        - activeDepartmentGrantId
+        - grantedAt
+      properties:
+        institutionId:
+          type: string
+          format: uuid
+        departmentId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        activeDepartmentGrantId:
+          type: string
+          format: uuid
+          nullable: true
+        grantedAt:
+          type: string
+          format: date-time
+          nullable: true
+
     AccessGrant:
       type: object
       properties:
@@ -279,6 +305,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        hospitalSharingOptions:
+          type: array
+          description: Current hospital sharing choices for individual grants
+          items:
+            $ref: "#/components/schemas/HospitalSharingOption"
 
     AccessLogEntry:
       type: object

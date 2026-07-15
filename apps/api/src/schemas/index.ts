@@ -123,6 +123,16 @@ export const ReadingSchema = z
   })
   .openapi("Reading")
 
+export const HospitalSharingOptionSchema = z
+  .object({
+    institutionId: z.string().uuid(),
+    departmentId: z.string().uuid(),
+    displayName: z.string(),
+    activeDepartmentGrantId: z.string().uuid().nullable(),
+    grantedAt: z.string().datetime().nullable(),
+  })
+  .openapi("HospitalSharingOption")
+
 export const AccessGrantSchema = z
   .object({
     id: z.string().uuid(),
@@ -134,6 +144,7 @@ export const AccessGrantSchema = z
     registrationNumber: z.string().nullable(),
     grantedAt: z.string().datetime(),
     revokedAt: z.string().datetime().nullable(),
+    hospitalSharingOptions: z.array(HospitalSharingOptionSchema).optional(),
   })
   .openapi("AccessGrant")
 

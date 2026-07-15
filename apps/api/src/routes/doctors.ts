@@ -25,7 +25,7 @@ import {
 import { computeSeverity, resolveThresholds } from "../lib/thresholds"
 import { serializeReading } from "../lib/readings"
 import { doctorHasAccess } from "../lib/access"
-import { mapAffiliation } from "../lib/affiliations"
+import { getDoctorDepartmentIds, mapAffiliation } from "../lib/affiliations"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
@@ -267,13 +267,7 @@ export function registerDoctorRoutes(app: AppRouter) {
     const doctor = c.get("user")
     const db = createDb(c.env.DB)
 
-    const affiliations = await db
-      .select({ departmentId: doctorAffiliation.departmentId })
-      .from(doctorAffiliation)
-      .where(eq(doctorAffiliation.doctorId, doctor.id))
-    const deptIds = affiliations
-      .map((a) => a.departmentId)
-      .filter((id): id is string => id !== null)
+    const deptIds = await getDoctorDepartmentIds(db, doctor.id)
 
     const individualCond = and(
       eq(accessGrant.grantType, "individual"),

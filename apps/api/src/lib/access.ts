@@ -1,20 +1,14 @@
 import { eq, and, or, isNull, inArray } from "drizzle-orm"
-import { accessGrant, doctorAffiliation } from "../db/schema"
+import { accessGrant } from "../db/schema"
 import type { DB } from "../db"
+import { getDoctorDepartmentIds } from "./affiliations"
 
 export async function doctorHasAccess(
   db: DB,
   doctorId: string,
   patientId: string
 ): Promise<boolean> {
-  const affiliations = await db
-    .select({ departmentId: doctorAffiliation.departmentId })
-    .from(doctorAffiliation)
-    .where(eq(doctorAffiliation.doctorId, doctorId))
-
-  const deptIds = affiliations
-    .map((a) => a.departmentId)
-    .filter((id): id is string => id !== null)
+  const deptIds = await getDoctorDepartmentIds(db, doctorId)
   const individualCond = and(
     eq(accessGrant.grantType, "individual"),
     eq(accessGrant.granteeId, doctorId)

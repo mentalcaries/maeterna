@@ -6,8 +6,8 @@ import {
   doctorProfile,
   doctorAffiliation,
   institution,
-  department,
 } from "../db/schema"
+import { resolveInstitutionDepartmentIds } from "../lib/affiliations"
 import { sessionMiddleware } from "../middleware/session"
 import { responses } from "../schemas"
 import type { AppRouter } from "../types"
@@ -98,8 +98,6 @@ export function registerSearchRoutes(app: AppRouter) {
       .where(inArray(doctorAffiliation.doctorId, doctorIds))
       .orderBy(doctorAffiliation.createdAt)
 
-    // Batch-fetch departments for every institution referenced, so we can
-    // derive an O&G department per institution without an N+1 query.
     const institutionIds = [
       ...new Set(
         affRows
@@ -107,29 +105,10 @@ export function registerSearchRoutes(app: AppRouter) {
           .filter((id): id is string => id !== null)
       ),
     ]
-    const deptRows =
-      institutionIds.length > 0
-        ? await db
-            .select({
-              id: department.id,
-              institutionId: department.institutionId,
-              name: department.name,
-            })
-            .from(department)
-            .where(inArray(department.institutionId, institutionIds))
-        : []
-    const deptsByInstitution = new Map<string, { id: string; name: string }[]>()
-    for (const d of deptRows) {
-      const list = deptsByInstitution.get(d.institutionId) ?? []
-      list.push({ id: d.id, name: d.name })
-      deptsByInstitution.set(d.institutionId, list)
-    }
-    function deriveDepartmentId(institutionId: string): string | null {
-      const depts = deptsByInstitution.get(institutionId)
-      if (!depts || depts.length === 0) return null
-      const og = depts.find((d) => d.name.toLowerCase().includes("obstetric"))
-      return (og ?? depts[0]).id
-    }
+    const departmentIdsByInstitution = await resolveInstitutionDepartmentIds(
+      db,
+      institutionIds
+    )
 
     type AffEntry = z.infer<typeof searchDoctorAffiliationSchema>
     const affsByDoctor = new Map<
@@ -145,7 +124,8 @@ export function registerSearchRoutes(app: AppRouter) {
         bucket.institutions.push({
           type: "institution",
           institutionId: row.institutionId,
-          departmentId: deriveDepartmentId(row.institutionId),
+          departmentId:
+            departmentIdsByInstitution.get(row.institutionId) ?? null,
           displayName: row.institutionName ?? "",
         })
       } else if (row.practiceName) {
