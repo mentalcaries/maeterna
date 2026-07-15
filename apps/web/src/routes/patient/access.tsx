@@ -16,6 +16,12 @@ import { Separator } from "@/components/separator"
 import { cn } from "@/lib/utils"
 import { RiSearchLine, RiUserLine, RiBuilding2Line } from "@remixicon/react"
 import { apiClient } from "@/lib/api-client"
+import { HospitalSharingDialog } from "@/components/HospitalSharingDialog"
+import { RevokeAccessDialog } from "@/components/RevokeAccessDialog"
+import {
+  formatGrantDate,
+  hospitalShareButtonLabel,
+} from "@/lib/hospital-sharing"
 
 export const Route = createFileRoute("/patient/access")({
   component: PatientAccessPage,
@@ -47,12 +53,19 @@ function PatientAccessPage() {
     "individual"
   )
   const [grantDialogOpen, setGrantDialogOpen] = useState(false)
+  const [sharingGrantId, setSharingGrantId] = useState<string | null>(null)
+  const [revokingGrantId, setRevokingGrantId] = useState<string | null>(null)
 
-  const { data: grantsData = [] } = useQuery({
+  const {
+    data: grantsData = [],
+    isError: grantsError,
+    refetch: refetchGrants,
+  } = useQuery({
     queryKey: ["grants"],
     queryFn: async () => {
       const res = await apiClient.GET("/patients/me/grants")
-      return res.data ?? []
+      if (res.error) throw new Error("Unable to load access")
+      return res.data
     },
   })
 
@@ -88,16 +101,6 @@ function PatientAccessPage() {
     },
   })
 
-  const revokeMutation = useMutation({
-    mutationFn: (grantId: string) =>
-      apiClient.DELETE("/patients/me/grants/{grantId}", {
-        params: { path: { grantId } },
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["grants"] })
-    },
-  })
-
   function openGrantDialog(doctor: SearchDoctor) {
     setSelectedDoctor(doctor)
     setSelectedInstitutionAffiliation(
@@ -120,6 +123,10 @@ function PatientAccessPage() {
   }
 
   const filteredResults = query.trim().length >= 2 ? searchResults : []
+  const sharingGrant =
+    grantsData.find((grant) => grant.id === sharingGrantId) ?? null
+  const revokingGrant =
+    grantsData.find((grant) => grant.id === revokingGrantId) ?? null
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -197,66 +204,93 @@ function PatientAccessPage() {
         </TabsList>
 
         <TabsContent value="grants" className="mt-4">
-          {grantsData.length === 0 ? (
+          {grantsError && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-sm text-destructive">
+                Could not load access. Please try again.
+              </p>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => void refetchGrants()}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          {grantsData.length === 0 && !grantsError ? (
             <div className="rounded-lg border border-dashed border-border p-8 text-center text-base text-muted-foreground">
               No active grants. Use the search above to grant access to a
               doctor.
             </div>
-          ) : (
+          ) : grantsData.length > 0 ? (
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-              {grantsData.map((grant) => (
-                <div
-                  key={grant.id}
-                  className="flex items-start justify-between gap-3 p-3"
-                >
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      {grant.grantType === "individual" ? (
-                        <RiUserLine className="size-3.5 text-muted-foreground" />
-                      ) : (
-                        <RiBuilding2Line className="size-3.5 text-muted-foreground" />
-                      )}
-                      <p className="text-base font-medium">
-                        {grant.granteeName}
-                      </p>
-                      <Badge variant="secondary" className="text-xs">
-                        {grant.grantType === "individual"
-                          ? "Individual"
-                          : "Department"}
-                      </Badge>
-                    </div>
-                    {grant.institutionName && (
-                      <p className="text-xs text-muted-foreground">
-                        {grant.institutionName}
-                      </p>
-                    )}
-                    {grant.grantType === "individual" &&
-                      grant.registrationNumber && (
+              {grantsData.map((grant) => {
+                const shareLabel =
+                  grant.grantType === "individual"
+                    ? hospitalShareButtonLabel(
+                        grant.hospitalSharingOptions ?? []
+                      )
+                    : null
+
+                return (
+                  <div key={grant.id} className="flex flex-col gap-3 p-3">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {grant.grantType === "individual" ? (
+                          <RiUserLine className="size-3.5 text-muted-foreground" />
+                        ) : (
+                          <RiBuilding2Line className="size-3.5 text-muted-foreground" />
+                        )}
+                        <p className="min-w-0 truncate text-base font-medium">
+                          {grant.granteeName}
+                        </p>
+                        <Badge variant="secondary" className="text-xs">
+                          {grant.grantType === "individual"
+                            ? "Individual"
+                            : "Department"}
+                        </Badge>
+                      </div>
+                      {grant.institutionName && (
                         <p className="text-xs text-muted-foreground">
-                          Reg. {grant.registrationNumber}
+                          {grant.institutionName}
                         </p>
                       )}
-                    <p className="text-xs text-muted-foreground">
-                      Granted{" "}
-                      {new Date(grant.grantedAt).toLocaleDateString("en-TT", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
+                      {grant.grantType === "individual" &&
+                        grant.registrationNumber && (
+                          <p className="text-xs text-muted-foreground">
+                            Reg. {grant.registrationNumber}
+                          </p>
+                        )}
+                      <p className="text-xs text-muted-foreground">
+                        Granted {formatGrantDate(grant.grantedAt)}
+                      </p>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-end gap-2 border-t border-border pt-2">
+                      {shareLabel && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          title={shareLabel}
+                          className="min-w-0 flex-1 justify-center px-0"
+                          onClick={() => setSharingGrantId(grant.id)}
+                        >
+                          <span className="truncate">{shareLabel}</span>
+                        </Button>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="xs"
+                        onClick={() => setRevokingGrantId(grant.id)}
+                      >
+                        Revoke
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={revokeMutation.isPending}
-                    onClick={() => revokeMutation.mutate(grant.id)}
-                  >
-                    Revoke
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
-          )}
+          ) : null}
         </TabsContent>
 
         <TabsContent value="log" className="mt-4">
@@ -366,6 +400,18 @@ function PatientAccessPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <HospitalSharingDialog
+        grant={sharingGrant}
+        open={sharingGrantId !== null}
+        onOpenChange={(open) => !open && setSharingGrantId(null)}
+      />
+
+      <RevokeAccessDialog
+        grant={revokingGrant}
+        open={revokingGrantId !== null}
+        onOpenChange={(open) => !open && setRevokingGrantId(null)}
+      />
     </div>
   )
 }
