@@ -1826,6 +1826,88 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/doctors/me/patients/{patientId}/due-date": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Set or clear the due date for a patient */
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          patientId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json": {
+            dueDate: string | null
+          }
+        }
+      }
+      responses: {
+        /** @description Due date saved */
+        200: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": {
+              dueDate: string | null
+            }
+          }
+        }
+        /** @description Missing or invalid session token */
+        401: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Authenticated but insufficient permissions */
+        403: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Resource not found */
+        404: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+        /** @description Validation error */
+        422: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["Error"]
+          }
+        }
+      }
+    }
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/invites": {
     parameters: {
       query?: never
@@ -2660,6 +2742,7 @@ export interface components {
       /** Format: email */
       email: string
       dateOfBirth: string
+      dueDate: string | null
       avatarUrl: string | null
       /** @enum {string} */
       role: "patient" | "doctor" | "admin"

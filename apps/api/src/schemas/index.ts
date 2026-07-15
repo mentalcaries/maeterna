@@ -54,6 +54,7 @@ export const PatientSchema = z
     lastName: z.string(),
     email: z.string().email(),
     dateOfBirth: z.string(),
+    dueDate: z.string().nullable(),
     avatarUrl: z.string().nullable(),
     role: RoleSchema,
     status: UserStatusSchema,

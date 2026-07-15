@@ -1,0 +1,1 @@
+ALTER TABLE `patient_profile` ADD `due_date` text;

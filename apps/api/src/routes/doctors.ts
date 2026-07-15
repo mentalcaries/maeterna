@@ -180,6 +180,48 @@ const setThresholdsRoute = createRoute({
   },
 })
 
+const setDueDateRoute = createRoute({
+  method: "put",
+  path: "/doctors/me/patients/{patientId}/due-date",
+  tags: ["Doctors"],
+  summary: "Set or clear the due date for a patient",
+  request: {
+    params: z.object({ patientId: z.string().min(1) }),
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z.object({
+            dueDate: z
+              .string()
+              .regex(/^\d{4}-\d{2}-\d{2}$/)
+              .refine((s) => {
+                const [y, m, d] = s.split("-").map(Number)
+                const date = new Date(y!, m! - 1, d!)
+                const now = new Date()
+                const max = new Date()
+                max.setMonth(max.getMonth() + 12)
+                return date > now && date <= max
+              }, "Due date must be within the next 12 months")
+              .nullable(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({ dueDate: z.string().nullable() }),
+        },
+      },
+      description: "Due date saved",
+    },
+    ...responses,
+  },
+})
+
 const patchMeRoute = createRoute({
   method: "patch",
   path: "/doctors/me",
@@ -303,6 +345,7 @@ export function registerDoctorRoutes(app: AppRouter) {
             lastName: p.lastName ?? "",
             email: p.email,
             dateOfBirth: profile?.dateOfBirth ?? "",
+            dueDate: profile?.dueDate ?? null,
             avatarUrl: p.image,
             role: "patient" as const,
             status: p.status as "active",
@@ -367,6 +410,7 @@ export function registerDoctorRoutes(app: AppRouter) {
         lastName: patientUser.lastName ?? "",
         email: patientUser.email,
         dateOfBirth: profile?.dateOfBirth ?? "",
+        dueDate: profile?.dueDate ?? null,
         avatarUrl: patientUser.image,
         role: "patient" as const,
         status: patientUser.status as "active",
@@ -430,5 +474,31 @@ export function registerDoctorRoutes(app: AppRouter) {
       })
 
     return c.json(body)
+  })
+
+  // PUT /doctors/me/patients/{patientId}/due-date
+  app.openapi(setDueDateRoute, async (c) => {
+    const doctor = c.get("user")
+    const { patientId } = c.req.valid("param")
+    const { dueDate } = c.req.valid("json")
+    const db = createDb(c.env.DB)
+
+    if (!(await doctorHasAccess(db, doctor.id, patientId)))
+      raise(403, "No active access grant for this patient")
+
+    const profile = await db
+      .select({ id: patientProfile.id })
+      .from(patientProfile)
+      .where(eq(patientProfile.userId, patientId))
+      .get()
+
+    if (!profile) raise(404, "Patient not found")
+
+    await db
+      .update(patientProfile)
+      .set({ dueDate, updatedAt: new Date() })
+      .where(eq(patientProfile.userId, patientId))
+
+    return c.json({ dueDate })
   })
 }
