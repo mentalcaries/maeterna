@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "25962187-f5d0-4265-9267-52f62b7149ac",
+  "id": "a6e36d33-3104-4f20-af2a-01bc05d1a142",
   "prevId": "eeeb6a14-1217-4b14-9177-995b0c85b388",
   "tables": {
     "access_grant": {
@@ -50,14 +50,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "access_grant_active_unique_idx": {
-          "name": "access_grant_active_unique_idx",
-          "columns": ["patient_id", "grant_type", "grantee_id"],
-          "isUnique": true,
-          "where": "\"access_grant\".\"revoked_at\" is null"
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "access_grant_patient_id_user_id_fk": {
           "name": "access_grant_patient_id_user_id_fk",
@@ -1146,6 +1139,13 @@
         "last_name": {
           "name": "last_name",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "terms_accepted_at": {
+          "name": "terms_accepted_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
