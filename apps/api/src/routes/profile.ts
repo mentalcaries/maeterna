@@ -226,6 +226,7 @@ export function registerProfileRoutes(app: AppRouter) {
         lastName: updated!.lastName ?? "",
         email: updated!.email,
         dateOfBirth: profile?.dateOfBirth ?? "",
+        dueDate: profile?.dueDate ?? null,
         avatarUrl: updated!.image,
         role: updated!.role as "patient",
         status: updated!.status as "active",

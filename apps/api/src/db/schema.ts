@@ -84,6 +84,7 @@ export const patientProfile = sqliteTable("patient_profile", {
     .unique()
     .references(() => user.id, { onDelete: "cascade" }),
   dateOfBirth: text("date_of_birth").notNull(), // YYYY-MM-DD
+  dueDate: text("due_date"), // YYYY-MM-DD, nullable — set by doctor
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 })
 

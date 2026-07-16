@@ -30,7 +30,11 @@ import {
   RiAddLine,
   RiFileExcel2Line,
   RiFilePdfLine,
+  RiCalendarLine,
 } from "@remixicon/react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/popover"
+import { Calendar } from "@/components/calendar"
+import { formatDueDate, isDueDateValid, parseDueDate } from "@/lib/due-date"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
 import type { Thresholds } from "@/lib/thresholds"
 import { mgdlToMmol, mmolToMgdl } from "@/lib/glucose"
@@ -148,6 +152,19 @@ function PatientDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
       setThresholdOpen(false)
+    },
+  })
+
+  const [dueDateOpen, setDueDateOpen] = useState(false)
+
+  const dueDateMutation = useMutation({
+    mutationFn: (dueDate: string | null) =>
+      apiClient.PUT("/doctors/me/patients/{patientId}/due-date", {
+        params: { path: { patientId } },
+        body: { dueDate },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
     },
   })
 
@@ -303,6 +320,63 @@ function PatientDetailPage() {
             </Badge>
           </div>
         )}
+
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Due date:</span>
+          <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+            <PopoverTrigger
+              type="button"
+              className="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-sm font-normal hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <RiCalendarLine className="size-3.5 shrink-0 text-muted-foreground" />
+              {patient.dueDate ? (
+                formatDueDate(patient.dueDate)
+              ) : (
+                <span className="text-muted-foreground">Set due date</span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent>
+              <Calendar
+                mode="single"
+                selected={parseDueDate(patient.dueDate)}
+                onSelect={(d) => {
+                  if (d) {
+                    const localDate = [
+                      d.getFullYear(),
+                      String(d.getMonth() + 1).padStart(2, "0"),
+                      String(d.getDate()).padStart(2, "0"),
+                    ].join("-")
+                    dueDateMutation.mutate(localDate)
+                  }
+                  setDueDateOpen(false)
+                }}
+                captionLayout="dropdown"
+                fromYear={new Date().getFullYear()}
+                toYear={new Date().getFullYear() + 2}
+                defaultMonth={parseDueDate(patient.dueDate) ?? new Date()}
+                disabled={(d) => !isDueDateValid(d)}
+                classNames={{ caption_label: "hidden" }}
+              />
+              {patient.dueDate && (
+                <div className="border-t border-border pt-2">
+                  <button
+                    type="button"
+                    className="w-full rounded px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => {
+                      dueDateMutation.mutate(null)
+                      setDueDateOpen(false)
+                    }}
+                  >
+                    Clear due date
+                  </button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          {dueDateMutation.isError && (
+            <p className="text-sm text-destructive">Failed to save due date.</p>
+          )}
+        </div>
       </div>
 
       <Tabs

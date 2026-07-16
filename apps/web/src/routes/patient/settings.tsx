@@ -13,7 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/dialog"
-import { RiCalendarLine, RiShieldLine } from "@remixicon/react"
+import { RiCalendarLine, RiShieldLine, RiCalendar2Line } from "@remixicon/react"
+import { formatDueDate } from "@/lib/due-date"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
@@ -244,6 +245,21 @@ function PatientSettingsPage() {
                   </PopoverContent>
                 </Popover>
               </div>
+
+              {profile?.dueDate && (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-base font-medium tracking-normal normal-case">
+                    Due date
+                  </Label>
+                  <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted px-3 py-2 text-base text-muted-foreground">
+                    <RiCalendar2Line className="size-4 shrink-0" />
+                    {formatDueDate(profile.dueDate)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Set by your doctor. Contact them to make changes.
+                  </p>
+                </div>
+              )}
 
               {profileError && (
                 <p className="text-sm text-destructive">{profileError}</p>

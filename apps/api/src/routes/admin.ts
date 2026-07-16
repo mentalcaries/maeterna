@@ -39,6 +39,7 @@ async function buildPatientResponse(db: DB, p: typeof userTable.$inferSelect) {
     lastName: p.lastName ?? "",
     email: p.email,
     dateOfBirth: profile?.dateOfBirth ?? "",
+    dueDate: profile?.dueDate ?? null,
     avatarUrl: p.image,
     role: "patient" as const,
     status: p.status as "active" | "suspended",
