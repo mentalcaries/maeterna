@@ -17,7 +17,8 @@ import {
   GrantTypeSchema,
   responses,
 } from "../schemas"
-import { raise } from "../lib/errors"
+import { isUniqueConstraintError, raise } from "../lib/errors"
+import { resolveInstitutionDepartmentIds } from "../lib/affiliations"
 import type { AppRouter } from "../types"
 
 const listGrantsRoute = createRoute({
@@ -119,47 +120,77 @@ async function buildGrantResponses(
       grants.filter((g) => g.grantType === "department").map((g) => g.granteeId)
     ),
   ]
+  const patientIds = [...new Set(grants.map((grant) => grant.patientId))]
 
-  const [doctors, profiles, affRows, depts] = await Promise.all([
-    doctorIds.length > 0
-      ? db.select().from(userTable).where(inArray(userTable.id, doctorIds))
-      : Promise.resolve([]),
-    doctorIds.length > 0
-      ? db
-          .select({
-            userId: doctorProfile.userId,
-            registrationNumber: doctorProfile.registrationNumber,
-          })
-          .from(doctorProfile)
-          .where(inArray(doctorProfile.userId, doctorIds))
-      : Promise.resolve([]),
-    doctorIds.length > 0
-      ? db
-          .select({
-            doctorId: doctorAffiliation.doctorId,
-            institutionName: institution.name,
-            practiceName: doctorAffiliation.practiceName,
-          })
-          .from(doctorAffiliation)
-          .leftJoin(
-            institution,
-            eq(doctorAffiliation.institutionId, institution.id)
-          )
-          .where(inArray(doctorAffiliation.doctorId, doctorIds))
-          .orderBy(doctorAffiliation.createdAt)
-      : Promise.resolve([]),
-    deptIds.length > 0
-      ? db
-          .select({
-            deptId: department.id,
-            deptName: department.name,
-            instName: institution.name,
-          })
-          .from(department)
-          .innerJoin(institution, eq(department.institutionId, institution.id))
-          .where(inArray(department.id, deptIds))
-      : Promise.resolve([]),
-  ])
+  const [doctors, profiles, affRows, depts, activeDepartmentGrants] =
+    await Promise.all([
+      doctorIds.length > 0
+        ? db.select().from(userTable).where(inArray(userTable.id, doctorIds))
+        : Promise.resolve([]),
+      doctorIds.length > 0
+        ? db
+            .select({
+              userId: doctorProfile.userId,
+              registrationNumber: doctorProfile.registrationNumber,
+            })
+            .from(doctorProfile)
+            .where(inArray(doctorProfile.userId, doctorIds))
+        : Promise.resolve([]),
+      doctorIds.length > 0
+        ? db
+            .select({
+              doctorId: doctorAffiliation.doctorId,
+              institutionId: doctorAffiliation.institutionId,
+              institutionName: institution.name,
+              practiceName: doctorAffiliation.practiceName,
+            })
+            .from(doctorAffiliation)
+            .leftJoin(
+              institution,
+              eq(doctorAffiliation.institutionId, institution.id)
+            )
+            .where(inArray(doctorAffiliation.doctorId, doctorIds))
+            .orderBy(doctorAffiliation.createdAt)
+        : Promise.resolve([]),
+      deptIds.length > 0
+        ? db
+            .select({
+              deptId: department.id,
+              deptName: department.name,
+              instName: institution.name,
+            })
+            .from(department)
+            .innerJoin(
+              institution,
+              eq(department.institutionId, institution.id)
+            )
+            .where(inArray(department.id, deptIds))
+        : Promise.resolve([]),
+      patientIds.length > 0
+        ? db
+            .select()
+            .from(accessGrant)
+            .where(
+              and(
+                inArray(accessGrant.patientId, patientIds),
+                eq(accessGrant.grantType, "department"),
+                isNull(accessGrant.revokedAt)
+              )
+            )
+        : Promise.resolve([]),
+    ])
+
+  const affiliationInstitutionIds = [
+    ...new Set(
+      affRows
+        .map((row) => row.institutionId)
+        .filter((id): id is string => id !== null)
+    ),
+  ]
+  const departmentIdsByInstitution = await resolveInstitutionDepartmentIds(
+    db,
+    affiliationInstitutionIds
+  )
 
   const doctorById = new Map(doctors.map((d) => [d.id, d]))
   const profileByDoctorId = new Map(profiles.map((p) => [p.userId, p]))
@@ -172,6 +203,25 @@ async function buildGrantResponses(
       firstAffByDoctorId.set(row.doctorId, row)
   }
   const deptById = new Map(depts.map((d) => [d.deptId, d]))
+  const institutionAffsByDoctorId = new Map<
+    string,
+    { institutionId: string; displayName: string }[]
+  >()
+  for (const row of affRows) {
+    if (!row.institutionId) continue
+    const affiliations = institutionAffsByDoctorId.get(row.doctorId) ?? []
+    affiliations.push({
+      institutionId: row.institutionId,
+      displayName: row.institutionName ?? "",
+    })
+    institutionAffsByDoctorId.set(row.doctorId, affiliations)
+  }
+  const activeDepartmentGrantByPatientAndDepartment = new Map(
+    activeDepartmentGrants.map((grant) => [
+      `${grant.patientId}:${grant.granteeId}`,
+      grant,
+    ])
+  )
 
   return grants.map((grant) => {
     let granteeName = ""
@@ -193,7 +243,7 @@ async function buildGrantResponses(
       institutionName = dept?.instName ?? ""
     }
 
-    return {
+    const response = {
       id: grant.id,
       patientId: grant.patientId,
       grantType: grant.grantType as "individual" | "department",
@@ -204,6 +254,32 @@ async function buildGrantResponses(
       grantedAt: grant.grantedAt.toISOString(),
       revokedAt: grant.revokedAt?.toISOString() ?? null,
     }
+
+    if (grant.grantType === "department") return response
+
+    const hospitalSharingOptions = (
+      institutionAffsByDoctorId.get(grant.granteeId) ?? []
+    ).flatMap((affiliation) => {
+      const departmentId = departmentIdsByInstitution.get(
+        affiliation.institutionId
+      )
+      if (!departmentId) return []
+
+      const activeGrant = activeDepartmentGrantByPatientAndDepartment.get(
+        `${grant.patientId}:${departmentId}`
+      )
+      return [
+        {
+          institutionId: affiliation.institutionId,
+          departmentId,
+          displayName: affiliation.displayName,
+          activeDepartmentGrantId: activeGrant?.id ?? null,
+          grantedAt: activeGrant?.grantedAt.toISOString() ?? null,
+        },
+      ]
+    })
+
+    return { ...response, hospitalSharingOptions }
   })
 }
 
@@ -258,7 +334,12 @@ export function registerAccessRoutes(app: AppRouter) {
       grantedAt: now,
       revokedAt: null,
     }
-    await db.insert(accessGrant).values(newGrant)
+    try {
+      await db.insert(accessGrant).values(newGrant)
+    } catch (err) {
+      if (isUniqueConstraintError(err)) raise(409, "Grant already exists")
+      throw err
+    }
     const [response] = await buildGrantResponses(db, [newGrant])
     return c.json(response, 201)
   })

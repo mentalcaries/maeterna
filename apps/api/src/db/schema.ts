@@ -170,18 +170,26 @@ export const threshold = sqliteTable("threshold", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 })
 
-export const accessGrant = sqliteTable("access_grant", {
-  id: text("id").primaryKey(),
-  patientId: text("patient_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  grantType: text("grant_type", {
-    enum: ["individual", "department"],
-  }).notNull(),
-  granteeId: text("grantee_id").notNull(), // doctor userId (individual) or department.id (department)
-  grantedAt: integer("granted_at", { mode: "timestamp" }).notNull(),
-  revokedAt: integer("revoked_at", { mode: "timestamp" }),
-})
+export const accessGrant = sqliteTable(
+  "access_grant",
+  {
+    id: text("id").primaryKey(),
+    patientId: text("patient_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    grantType: text("grant_type", {
+      enum: ["individual", "department"],
+    }).notNull(),
+    granteeId: text("grantee_id").notNull(), // doctor userId (individual) or department.id (department)
+    grantedAt: integer("granted_at", { mode: "timestamp" }).notNull(),
+    revokedAt: integer("revoked_at", { mode: "timestamp" }),
+  },
+  (t) => [
+    uniqueIndex("access_grant_active_unique_idx")
+      .on(t.patientId, t.grantType, t.granteeId)
+      .where(sql`${t.revokedAt} is null`),
+  ]
+)
 
 export const accessLog = sqliteTable("access_log", {
   id: text("id").primaryKey(),

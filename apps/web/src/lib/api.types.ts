@@ -2599,6 +2599,18 @@ export interface components {
       grantedAt: string
       /** Format: date-time */
       revokedAt: string | null
+      hospitalSharingOptions?: components["schemas"]["HospitalSharingOption"][]
+    }
+    HospitalSharingOption: {
+      /** Format: uuid */
+      institutionId: string
+      /** Format: uuid */
+      departmentId: string
+      displayName: string
+      /** Format: uuid */
+      activeDepartmentGrantId: string | null
+      /** Format: date-time */
+      grantedAt: string | null
     }
     AccessLogEntry: {
       /** Format: uuid */
