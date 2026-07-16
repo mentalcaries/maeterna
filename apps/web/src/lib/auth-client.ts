@@ -14,6 +14,7 @@ export type AppUser = {
   firstName?: string | null
   lastName?: string | null
   status?: "active" | "suspended" | null
+  termsAcceptedAt?: string | null
 }
 
 export function getAppUser(

@@ -348,7 +348,7 @@ function PatientSettingsPage() {
           <div className="flex flex-col gap-4">
             <p className="text-base text-muted-foreground">
               Type{" "}
-              <span className="font-mono font-bold tracking-widest text-foreground">
+              <span className="font-bold tracking-widest text-foreground">
                 DELETE
               </span>{" "}
               to confirm. This action cannot be reversed.

@@ -70,6 +70,12 @@ export function getAuth(env: CloudflareBindings) {
         status: { type: "string", defaultValue: "active", required: false },
         firstName: { type: "string", required: false, nullable: true },
         lastName: { type: "string", required: false, nullable: true },
+        termsAcceptedAt: {
+          type: "date",
+          required: false,
+          nullable: true,
+          input: false,
+        },
       },
     },
     databaseHooks: {

@@ -131,7 +131,10 @@ const setRoleRoute = createRoute({
       required: true,
       content: {
         "application/json": {
-          schema: z.object({ role: z.enum(["patient", "doctor"]) }),
+          schema: z.object({
+            role: z.enum(["patient", "doctor"]),
+            termsAccepted: z.literal(true),
+          }),
         },
       },
     },
@@ -165,9 +168,10 @@ export function registerProfileRoutes(app: AppRouter) {
     }
     const { role } = c.req.valid("json")
     const db = createDb(c.env.DB)
+    const now = new Date()
     await db
       .update(userTable)
-      .set({ role, updatedAt: new Date() })
+      .set({ role, termsAcceptedAt: now, updatedAt: now })
       .where(eq(userTable.id, currentUser.id))
     return c.json({ role }, 200)
   })

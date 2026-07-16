@@ -28,8 +28,18 @@ function RootComponent() {
     <>
       {suspended ? <AccountSuspendedScreen /> : <Outlet />}
       <footer className="fixed right-0 bottom-0 left-0 z-30 border-t border-border bg-background py-2 text-center text-sm text-muted-foreground">
-        &copy; {new Date().getFullYear()}{" "}
-        <a href="https://fullstackcollective.com">Full Stack Collective</a>
+        <span>
+          &copy; {new Date().getFullYear()}{" "}
+          <a href="https://fullstackcollective.com">Full Stack Collective</a>
+        </span>
+        <nav className="inline-flex gap-3 pl-3" aria-label="Legal">
+          <a href="/privacy.html" className="underline underline-offset-2">
+            Privacy Policy
+          </a>
+          <a href="/terms.html" className="underline underline-offset-2">
+            Terms of Service
+          </a>
+        </nav>
       </footer>
       <TanStackRouterDevtools position="bottom-right" />
       <ReactQueryDevtools initialIsOpen={false} />

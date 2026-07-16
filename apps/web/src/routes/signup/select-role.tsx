@@ -38,10 +38,13 @@ export const Route = createFileRoute("/signup/select-role")({
 function SelectRolePage() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<"patient" | "doctor" | null>(null)
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false)
 
   const roleMutation = useMutation({
     mutationFn: (role: "patient" | "doctor") =>
-      apiClient.PATCH("/profile/role", { body: { role } }),
+      apiClient.PATCH("/profile/role", {
+        body: { role, termsAccepted: true },
+      }),
     onSuccess: (_, role) => {
       if (role === "patient") void navigate({ to: "/signup/patient" })
       else void navigate({ to: "/signup/doctor" })
@@ -73,12 +76,42 @@ function SelectRolePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
+          <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+            <input
+              id="terms"
+              type="checkbox"
+              checked={hasAcceptedTerms}
+              onChange={(event) => setHasAcceptedTerms(event.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+            />
+            <label
+              htmlFor="terms"
+              className="text-sm leading-5 text-muted-foreground"
+            >
+              I agree to the{" "}
+              <a
+                href="/terms.html"
+                className="font-medium text-foreground underline underline-offset-2"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy.html"
+                className="font-medium text-foreground underline underline-offset-2"
+              >
+                Privacy Policy
+              </a>
+              .
+            </label>
+          </div>
+
           <RoleCard
             role="patient"
             icon={RiUserHeartLine}
             title="I'm a patient"
             description="Track your health during and after pregnancy"
-            disabled={roleMutation.isPending}
+            disabled={roleMutation.isPending || !hasAcceptedTerms}
             loading={roleMutation.isPending && selected === "patient"}
             onSelect={handleSelect}
           />
@@ -87,7 +120,7 @@ function SelectRolePage() {
             icon={RiStethoscopeLine}
             title="I'm a doctor"
             description="Monitor your patients' maternal health data"
-            disabled={roleMutation.isPending}
+            disabled={roleMutation.isPending || !hasAcceptedTerms}
             loading={roleMutation.isPending && selected === "doctor"}
             onSelect={handleSelect}
           />
