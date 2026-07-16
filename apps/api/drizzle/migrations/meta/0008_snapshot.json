@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ad09e22e-68ab-4dbc-b5f8-442e1e06d636",
-  "prevId": "4f7417dd-8d96-4fb1-b41f-efc312d2eac6",
+  "id": "eeeb6a14-1217-4b14-9177-995b0c85b388",
+  "prevId": "ad09e22e-68ab-4dbc-b5f8-442e1e06d636",
   "tables": {
     "access_grant": {
       "name": "access_grant",
@@ -422,10 +422,11 @@
         }
       },
       "indexes": {
-        "doctor_affiliation_unique_idx": {
-          "name": "doctor_affiliation_unique_idx",
-          "columns": ["doctor_id", "department_id"],
-          "isUnique": true
+        "doctor_affiliation_institution_unique_idx": {
+          "name": "doctor_affiliation_institution_unique_idx",
+          "columns": ["doctor_id", "institution_id"],
+          "isUnique": true,
+          "where": "\"doctor_affiliation\".\"institution_id\" is not null"
         }
       },
       "foreignKeys": {

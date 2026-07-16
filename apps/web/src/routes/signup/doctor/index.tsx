@@ -11,15 +11,9 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/dialog"
 import { authClient, getAppUser } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
+import { isValidPhoneNumber } from "@/lib/phone"
 
 export const Route = createFileRoute("/signup/doctor/")({
   beforeLoad: async () => {
@@ -30,12 +24,7 @@ export const Route = createFileRoute("/signup/doctor/")({
     if (!user.role) throw redirect({ to: "/signup/select-role" })
     if (user.role !== "doctor") throw redirect({ to: "/" })
     if (user.firstName) {
-      throw redirect({
-        to:
-          user.status === "pending_verification"
-            ? "/signup/doctor/pending"
-            : "/doctor/dashboard",
-      })
+      throw redirect({ to: "/doctor/dashboard" })
     }
   },
   component: DoctorProfilePage,
@@ -47,42 +36,26 @@ function DoctorProfilePage() {
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
+  const [registrationNumber, setRegistrationNumber] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
   const [profileError, setProfileError] = useState("")
-  const [verificationFailed, setVerificationFailed] = useState(false)
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
 
   const profileMutation = useMutation({
-    mutationFn: (body: { firstName: string; lastName: string }) =>
-      apiClient.POST("/profile/complete", { body }),
-    onSuccess: (res) => {
-      const data = res.data
-      if (!data) return
-      if ("verificationFailed" in data && data.verificationFailed) {
-        setVerificationFailed(true)
-        return
-      }
-      void queryClient.invalidateQueries({ queryKey: ["session"] })
-      if ("status" in data && data.status === "pending_verification") {
-        void navigate({ to: "/signup/doctor/pending" })
-      } else {
-        void navigate({ to: "/signup/doctor/affiliations" })
-      }
-    },
-  })
-
-  const submitForReviewMutation = useMutation({
-    mutationFn: (body: { firstName: string; lastName: string }) =>
-      apiClient.POST("/profile/complete/submit-for-review", { body }),
+    mutationFn: (body: {
+      firstName: string
+      lastName: string
+      registrationNumber: string
+      phoneNumber: string
+    }) => apiClient.POST("/profile/complete", { body }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["session"] })
-      void navigate({ to: "/signup/doctor/pending" })
+      void navigate({ to: "/signup/doctor/affiliations" })
     },
   })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setProfileError("")
-    setVerificationFailed(false)
     if (!firstName.trim()) {
       setProfileError("First name is required.")
       return
@@ -91,9 +64,23 @@ function DoctorProfilePage() {
       setProfileError("Last name is required.")
       return
     }
+    if (!registrationNumber.trim()) {
+      setProfileError("Medical registration number is required.")
+      return
+    }
+    if (!phoneNumber.trim()) {
+      setProfileError("Phone number is required.")
+      return
+    }
+    if (!isValidPhoneNumber(phoneNumber.trim())) {
+      setProfileError("Enter a valid phone number.")
+      return
+    }
     profileMutation.mutate({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
+      registrationNumber: registrationNumber.trim(),
+      phoneNumber: phoneNumber.trim(),
     })
   }
 
@@ -105,7 +92,7 @@ function DoctorProfilePage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Maeterna</h1>
         <p className="text-sm text-muted-foreground">
-          Step 1 of 2 — Profile &amp; verification
+          Step 1 of 2 — Profile &amp; registration
         </p>
       </div>
 
@@ -113,7 +100,7 @@ function DoctorProfilePage() {
         <CardHeader>
           <CardTitle>Profile &amp; registration</CardTitle>
           <CardDescription className="text-base">
-            Enter your name as listed on the MBTT national registry.
+            Tell patients who you are so they can verify your registration.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -153,28 +140,47 @@ function DoctorProfilePage() {
               </div>
             </div>
 
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label
+                htmlFor="registrationNumber"
+                className="text-base font-medium tracking-normal normal-case"
+              >
+                Medical registration number
+              </Label>
+              <Input
+                id="registrationNumber"
+                className="text-base"
+                placeholder="Registration number"
+                value={registrationNumber}
+                onChange={(e) => setRegistrationNumber(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Shown to patients so they can verify your registration.
+              </p>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label
+                htmlFor="phoneNumber"
+                className="text-base font-medium tracking-normal normal-case"
+              >
+                Phone number
+              </Label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                className="text-base"
+                placeholder="Phone number"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                autoComplete="tel"
+              />
+            </div>
+
             {(profileError || profileMutation.isError) && (
               <p className="text-sm text-destructive">
                 {profileError || "Something went wrong. Please try again."}
               </p>
-            )}
-
-            {verificationFailed && (
-              <div className="flex flex-col gap-2">
-                <p className="my-3 text-sm text-destructive">
-                  We couldn't verify your name against the MBTT registry. Please
-                  check that your name matches your registration exactly and try
-                  again.
-                </p>
-                <Button
-                  variant="outline"
-                  type="button"
-                  className="mx-auto self-start text-sm text-muted-foreground hover:text-foreground"
-                  onClick={() => setReviewDialogOpen(true)}
-                >
-                  request manual approval.
-                </Button>
-              </div>
             )}
 
             <Button
@@ -182,44 +188,11 @@ function DoctorProfilePage() {
               className="w-full"
               disabled={profileMutation.isPending}
             >
-              {profileMutation.isPending ? "Verifying…" : "Continue"}
+              {profileMutation.isPending ? "Saving…" : "Continue"}
             </Button>
           </form>
         </CardContent>
       </Card>
-
-      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Submit for manual review?</DialogTitle>
-          </DialogHeader>
-          <p className="text-base text-muted-foreground">
-            Your account will be reviewed by the Maeterna team. This typically
-            takes 1–3 business days. You won't be able to access the platform
-            until approved.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setReviewDialogOpen(false)}
-              disabled={submitForReviewMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                submitForReviewMutation.mutate({
-                  firstName: firstName.trim(),
-                  lastName: lastName.trim(),
-                })
-              }}
-              disabled={submitForReviewMutation.isPending}
-            >
-              {submitForReviewMutation.isPending ? "Submitting…" : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -54,8 +54,22 @@
     {
       "idx": 7,
       "version": "6",
-      "when": 1784131757358,
-      "tag": "0007_new_pepper_potts",
+      "when": 1783767553650,
+      "tag": "0007_tough_human_torch",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1783994764820,
+      "tag": "0008_parched_lifeguard",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784212992070,
+      "tag": "0010_clever_archangel",
       "breakpoints": true
     }
   ]

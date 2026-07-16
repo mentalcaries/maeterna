@@ -12,7 +12,9 @@ export async function doctorHasAccess(
     .from(doctorAffiliation)
     .where(eq(doctorAffiliation.doctorId, doctorId))
 
-  const deptIds = affiliations.map((a) => a.departmentId)
+  const deptIds = affiliations
+    .map((a) => a.departmentId)
+    .filter((id): id is string => id !== null)
   const individualCond = and(
     eq(accessGrant.grantType, "individual"),
     eq(accessGrant.granteeId, doctorId)

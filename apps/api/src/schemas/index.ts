@@ -1,11 +1,7 @@
 import { z } from "@hono/zod-openapi"
 
 export const RoleSchema = z.enum(["patient", "doctor", "admin"])
-export const UserStatusSchema = z.enum([
-  "active",
-  "suspended",
-  "pending_verification",
-])
+export const UserStatusSchema = z.enum(["active", "suspended"])
 export const ReadingTypeSchema = z.enum(["glucose", "blood_pressure"])
 export const SeveritySchema = z.enum(["normal", "high"])
 export const ContextSchema = z.enum([
@@ -37,13 +33,29 @@ export const ThresholdsSchema = z
   })
   .openapi("Thresholds")
 
+// Doctors self-attest their registration number and phone number at signup;
+// there's no external registry match, so these only validate shape/length.
+export const RegistrationNumberSchema = z.string().trim().min(1).max(50)
+
+export const PhoneNumberSchema = z
+  .string()
+  .trim()
+  .refine(
+    (val) => /^\+?[0-9]{7,15}$/.test(val.replace(/[\s\-()]/g, "")),
+    "Phone number must be 7-15 digits, optionally prefixed with +"
+  )
+
 export const DoctorAffiliationSchema = z
   .object({
     id: z.string().uuid(),
-    institutionId: z.string().uuid(),
-    institutionName: z.string(),
-    departmentId: z.string().uuid(),
-    departmentName: z.string(),
+    type: z.enum(["institution", "practice"]),
+    institution: z
+      .object({ id: z.string().uuid(), name: z.string() })
+      .nullable(),
+    department: z
+      .object({ id: z.string().uuid(), name: z.string() })
+      .nullable(),
+    practiceName: z.string().nullable(),
   })
   .openapi("DoctorAffiliation")
 
@@ -68,20 +80,14 @@ export const DoctorSchema = z
     firstName: z.string(),
     lastName: z.string(),
     email: z.string().email(),
-    registrationNumber: z.string().nullable().optional(),
-    verified: z.boolean(),
+    registrationNumber: z.string().nullable(),
+    phoneNumber: z.string().nullable(),
     role: RoleSchema,
     status: UserStatusSchema,
     affiliations: z.array(DoctorAffiliationSchema),
     createdAt: z.string().datetime(),
   })
   .openapi("Doctor")
-
-export const DoctorVerificationFailedSchema = z
-  .object({
-    verificationFailed: z.literal(true),
-  })
-  .openapi("DoctorVerificationFailed")
 
 export const DepartmentSchema = z
   .object({
@@ -125,6 +131,7 @@ export const AccessGrantSchema = z
     granteeId: z.string().uuid(),
     granteeName: z.string(),
     institutionName: z.string(),
+    registrationNumber: z.string().nullable(),
     grantedAt: z.string().datetime(),
     revokedAt: z.string().datetime().nullable(),
   })

@@ -13,7 +13,7 @@ export type AppUser = {
   role: "patient" | "doctor" | "admin" | null
   firstName?: string | null
   lastName?: string | null
-  status?: "active" | "suspended" | "pending_verification" | null
+  status?: "active" | "suspended" | null
 }
 
 export function getAppUser(

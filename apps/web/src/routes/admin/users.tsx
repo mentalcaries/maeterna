@@ -32,7 +32,7 @@ type UserRow =
   | components["schemas"]["Patient"]
   | components["schemas"]["Doctor"]
 type RoleFilter = "all" | "patient" | "doctor"
-type StatusFilter = "all" | "active" | "suspended" | "pending_verification"
+type StatusFilter = "all" | "active" | "suspended"
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -46,16 +46,7 @@ const PAGE_SIZE = 50
 
 function statusBadge(status: string) {
   if (status === "active") return <Badge variant="success">Active</Badge>
-  if (status === "suspended")
-    return <Badge variant="destructive">Suspended</Badge>
-  return (
-    <Badge
-      variant="outline"
-      className="border-yellow-500 text-yellow-600 dark:text-yellow-400"
-    >
-      Pending
-    </Badge>
-  )
+  return <Badge variant="destructive">Suspended</Badge>
 }
 
 function roleBadge(role: string) {
@@ -81,7 +72,6 @@ function roleBadge(role: string) {
 type ConfirmAction =
   | { type: "suspend"; user: UserRow }
   | { type: "reactivate"; user: UserRow }
-  | { type: "approve"; user: UserRow }
 
 function AdminUsersPage() {
   const search = Route.useSearch()
@@ -97,7 +87,7 @@ function AdminUsersPage() {
   const apiStatus =
     statusFilter === "all"
       ? undefined
-      : (statusFilter as "active" | "suspended" | "pending_verification")
+      : (statusFilter as "active" | "suspended")
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-users", roleFilter, statusFilter, offset],
@@ -139,17 +129,6 @@ function AdminUsersPage() {
     },
   })
 
-  const approveMutation = useMutation({
-    mutationFn: (userId: string) =>
-      apiClient.POST("/admin/users/{userId}/approve", {
-        params: { path: { userId } },
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["admin-users"] })
-      setConfirmAction(null)
-    },
-  })
-
   function handleConfirm() {
     if (!confirmAction) return
     if (confirmAction.type === "suspend") {
@@ -162,12 +141,10 @@ function AdminUsersPage() {
         userId: confirmAction.user.id,
         status: "active",
       })
-    } else if (confirmAction.type === "approve") {
-      approveMutation.mutate(confirmAction.user.id)
     }
   }
 
-  const isMutating = statusMutation.isPending || approveMutation.isPending
+  const isMutating = statusMutation.isPending
 
   function resetFilters(role: RoleFilter, status: StatusFilter) {
     setRoleFilter(role)
@@ -221,7 +198,6 @@ function AdminUsersPage() {
               all: "All statuses",
               active: "Active",
               suspended: "Suspended",
-              pending_verification: "Pending verification",
             }}
           >
             <SelectTrigger className="h-8 w-48 text-sm">
@@ -231,9 +207,6 @@ function AdminUsersPage() {
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="suspended">Suspended</SelectItem>
-              <SelectItem value="pending_verification">
-                Pending verification
-              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -295,18 +268,6 @@ function AdminUsersPage() {
                         Reactivate
                       </Button>
                     )}
-                    {user.role === "doctor" &&
-                      user.status === "pending_verification" && (
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() =>
-                            setConfirmAction({ type: "approve", user })
-                          }
-                        >
-                          Approve
-                        </Button>
-                      )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -350,9 +311,7 @@ function AdminUsersPage() {
             <DialogTitle>
               {confirmAction?.type === "suspend"
                 ? "Suspend account"
-                : confirmAction?.type === "reactivate"
-                  ? "Reactivate account"
-                  : "Approve doctor"}
+                : "Reactivate account"}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
@@ -364,25 +323,17 @@ function AdminUsersPage() {
                 </span>
                 ? They will lose access to the platform immediately.
               </>
-            ) : confirmAction?.type === "reactivate" ? (
+            ) : (
               <>
                 Reactivate{" "}
                 <span className="font-medium text-foreground">
-                  {confirmAction.user ? userName(confirmAction.user) : ""}
+                  {confirmAction?.user ? userName(confirmAction.user) : ""}
                 </span>
                 ? They will regain access to the platform.
               </>
-            ) : (
-              <>
-                Approve{" "}
-                <span className="font-medium text-foreground">
-                  {confirmAction?.user ? userName(confirmAction.user) : ""}
-                </span>{" "}
-                as a verified doctor?
-              </>
             )}
           </p>
-          {(statusMutation.isError || approveMutation.isError) && (
+          {statusMutation.isError && (
             <p className="text-sm text-destructive">
               Action failed. Please try again.
             </p>

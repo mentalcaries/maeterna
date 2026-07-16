@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import {
   sqliteTable,
   text,
@@ -21,7 +22,7 @@ export const user = sqliteTable("user", {
   // Domain fields — stored directly on the user table for easy session reads
   role: text("role", { enum: ["patient", "doctor", "admin"] }),
   status: text("status", {
-    enum: ["active", "suspended", "pending_verification"],
+    enum: ["active", "suspended"],
   })
     .notNull()
     .default("active"),
@@ -92,8 +93,8 @@ export const doctorProfile = sqliteTable("doctor_profile", {
     .notNull()
     .unique()
     .references(() => user.id, { onDelete: "cascade" }),
-  registrationNumber: text("registration_number").unique(),
-  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+  registrationNumber: text("registration_number").notNull(),
+  phoneNumber: text("phone_number").notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 })
 
@@ -120,15 +121,15 @@ export const doctorAffiliation = sqliteTable(
     doctorId: text("doctor_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    institutionId: text("institution_id")
-      .notNull()
-      .references(() => institution.id),
-    departmentId: text("department_id")
-      .notNull()
-      .references(() => department.id),
+    institutionId: text("institution_id").references(() => institution.id),
+    departmentId: text("department_id").references(() => department.id),
+    practiceName: text("practice_name"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [
-    uniqueIndex("doctor_affiliation_unique_idx").on(t.doctorId, t.departmentId),
+    uniqueIndex("doctor_affiliation_institution_unique_idx")
+      .on(t.doctorId, t.institutionId)
+      .where(sql`${t.institutionId} is not null`),
   ]
 )
 
@@ -237,15 +238,6 @@ export const passkey = sqliteTable("passkey", {
   transports: text("transports"),
   createdAt: integer("created_at", { mode: "timestamp" }),
   aaguid: text("aaguid"),
-})
-
-export const mbttRegistry = sqliteTable("mbtt_registry", {
-  memberId: text("member_id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  townId: text("town_id"),
-  status: text("status").notNull(), // '3' = general registration, '4' = specialist
-  syncedAt: text("synced_at").notNull(),
 })
 
 export const userPreferences = sqliteTable("user_preferences", {

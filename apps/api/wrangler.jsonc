@@ -13,9 +13,6 @@
       "migrations_dir": "drizzle/migrations",
     },
   ],
-  "triggers": {
-    "crons": ["0 6 1 * *"],
-  },
   "vars": {
     "SUPER_ADMIN_EMAIL": "devjaggernauth@gmail.com",
   },

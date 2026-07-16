@@ -15,11 +15,7 @@ import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/doctor")({ component: DoctorLayout })
 
-const EXCLUDED_PATHS = [
-  "/doctor/login",
-  "/doctor/onboarding",
-  "/doctor/pending",
-]
+const EXCLUDED_PATHS = ["/doctor/login"]
 
 function DoctorLayout() {
   const navigate = useNavigate()
@@ -40,11 +36,6 @@ function DoctorLayout() {
 
     if (!user.firstName) {
       void navigate({ to: "/signup/doctor" })
-      return
-    }
-
-    if (user.status === "pending_verification") {
-      void navigate({ to: "/signup/doctor/pending" })
     }
   }, [sessionData, isPending, navigate, isExcluded])
 
