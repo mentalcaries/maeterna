@@ -30,6 +30,7 @@ export interface paths {
           "application/json": {
             /** @enum {string} */
             role: "patient" | "doctor"
+            termsAccepted: true
           }
         }
       }
