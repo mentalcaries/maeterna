@@ -28,6 +28,7 @@ export const user = sqliteTable("user", {
     .default("active"),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp" }),
 })
 
 export const session = sqliteTable("session", {
