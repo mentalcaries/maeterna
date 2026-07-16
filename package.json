@@ -8,7 +8,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
-    "prepare": "node -e \"process.env.CI ? process.exit(0) : process.exit(1)\" || vp config"
+    "prepare": "node -e \"process.env.CI ? process.exit(0) : process.exit(1)\" || vp config",
+    "db:migrate": "pnpm --filter ./apps/api run db:migrate"
   },
   "devDependencies": {
     "turbo": "^2.9.18",
