@@ -1,2 +1,1 @@
-ALTER TABLE `user` ADD `terms_accepted_at` integer;--> statement-breakpoint
 CREATE UNIQUE INDEX `access_grant_active_unique_idx` ON `access_grant` (`patient_id`,`grant_type`,`grantee_id`) WHERE "access_grant"."revoked_at" is null;
