@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
-import { Badge } from "@/components/badge"
+import { Badge, badgeVariants } from "@/components/badge"
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,55 @@ export const Route = createFileRoute("/doctor/patients/$id")({
 })
 
 type ApiThresholds = components["schemas"]["Thresholds"]
+type PatientCondition = components["schemas"]["PatientCondition"]
+
+const CONDITION_CATEGORIES = [
+  {
+    label: "Metabolic / Glucose",
+    variant: "info" as const,
+    conditions: [
+      "Type 1 Diabetes",
+      "Type 2 Diabetes",
+      "Gestational Diabetes",
+      "PCOS",
+      "Steroid Use",
+    ],
+  },
+  {
+    label: "Cardiovascular / Blood Pressure",
+    variant: "warning" as const,
+    conditions: [
+      "Chronic Hypertension",
+      "Gestational Hypertension",
+      "Pre-eclampsia",
+      "Hx of Pre-eclampsia",
+    ],
+  },
+  {
+    label: "General Maternal Risk",
+    variant: "secondary" as const,
+    conditions: [
+      "Hypothyroidism",
+      "Anemia",
+      "Advanced Maternal Age",
+      "Rh-Negative",
+    ],
+  },
+] as const
+
+const CONDITION_VARIANT_MAP = new Map<string, "warning" | "info" | "secondary">(
+  CONDITION_CATEGORIES.flatMap((cat) =>
+    cat.conditions.map((cond) => [cond, cat.variant])
+  )
+)
+
+const PREDEFINED_CONDITION_SET = new Set(CONDITION_VARIANT_MAP.keys())
+
+function getConditionVariant(
+  condition: string
+): "warning" | "info" | "secondary" {
+  return CONDITION_VARIANT_MAP.get(condition) ?? "info"
+}
 
 type GlucoseContextFilter = "all" | "fasted" | "post_meal"
 const GLUCOSE_CONTEXT_FILTER_LABELS: Record<GlucoseContextFilter, string> = {
@@ -168,6 +217,31 @@ function PatientDetailPage() {
     },
   })
 
+  const [conditionsOpen, setConditionsOpen] = useState(false)
+  const [conditionInput, setConditionInput] = useState("")
+
+  const addConditionMutation = useMutation({
+    mutationFn: (condition: string) =>
+      apiClient.POST("/doctors/me/patients/{patientId}/conditions", {
+        params: { path: { patientId } },
+        body: { condition },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
+    },
+  })
+
+  const removeConditionMutation = useMutation({
+    mutationFn: (conditionId: string) =>
+      apiClient.DELETE(
+        "/doctors/me/patients/{patientId}/conditions/{conditionId}",
+        { params: { path: { patientId, conditionId } } }
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] })
+    },
+  })
+
   if (isPending) {
     return (
       <div className="flex flex-col gap-4">
@@ -203,6 +277,10 @@ function PatientDetailPage() {
   const allReadings = apiReadings.map(adaptReading)
   const alerts = allReadings.filter((r) => r.severity === "high")
   const patientName = `${patient.firstName} ${patient.lastName}`
+  const conditions: PatientCondition[] = patientDetail?.conditions ?? []
+  const customConditions = conditions.filter(
+    (c) => !PREDEFINED_CONDITION_SET.has(c.condition)
+  )
 
   function openNoteDialog(r: ApiReading) {
     setNoteTarget(r)
@@ -280,6 +358,13 @@ function PatientDetailPage() {
             >
               Set thresholds
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConditionsOpen(true)}
+            >
+              Flag conditions
+            </Button>
             <div className="relative">
               <Button
                 variant="outline"
@@ -313,11 +398,18 @@ function PatientDetailPage() {
           </div>
         </div>
 
-        {alerts.length > 0 && (
-          <div className="mt-1 flex items-center gap-2">
-            <Badge variant="critical">
-              {alerts.length} flagged reading{alerts.length !== 1 ? "s" : ""}
-            </Badge>
+        {(alerts.length > 0 || conditions.length > 0) && (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {alerts.length > 0 && (
+              <Badge variant="critical">
+                {alerts.length} flagged reading{alerts.length !== 1 ? "s" : ""}
+              </Badge>
+            )}
+            {conditions.map((c) => (
+              <Badge key={c.id} variant={getConditionVariant(c.condition)}>
+                {c.condition}
+              </Badge>
+            ))}
           </div>
         )}
 
@@ -604,6 +696,112 @@ function PatientDetailPage() {
               disabled={thresholdMutation.isPending}
             >
               {thresholdMutation.isPending ? "Saving…" : "Save thresholds"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Flag conditions dialog */}
+      <Dialog open={conditionsOpen} onOpenChange={setConditionsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Flag conditions — {patientName}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Flag known high-risk conditions for this patient.
+          </p>
+          <div className="flex flex-col gap-4">
+            {CONDITION_CATEGORIES.map((cat) => (
+              <div key={cat.label} className="flex flex-col gap-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {cat.label}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {cat.conditions.map((cond) => {
+                    const existing = conditions.find(
+                      (c) => c.condition === cond
+                    )
+                    return (
+                      <button
+                        key={cond}
+                        type="button"
+                        className={cn(
+                          badgeVariants({
+                            variant: existing ? cat.variant : "outline",
+                          }),
+                          "cursor-pointer",
+                          !existing && "text-muted-foreground hover:bg-muted"
+                        )}
+                        onClick={() => {
+                          if (existing) {
+                            removeConditionMutation.mutate(existing.id)
+                          } else {
+                            addConditionMutation.mutate(cond)
+                          }
+                        }}
+                      >
+                        {cond}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add custom condition…"
+              value={conditionInput}
+              onChange={(e) => setConditionInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && conditionInput.trim()) {
+                  addConditionMutation.mutate(conditionInput.trim())
+                  setConditionInput("")
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              disabled={
+                !conditionInput.trim() || addConditionMutation.isPending
+              }
+              onClick={() => {
+                addConditionMutation.mutate(conditionInput.trim())
+                setConditionInput("")
+              }}
+            >
+              Add
+            </Button>
+          </div>
+          {customConditions.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Custom
+              </p>
+              {customConditions.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-muted"
+                >
+                  <span>{c.condition}</span>
+                  <button
+                    type="button"
+                    className="ml-2 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeConditionMutation.mutate(c.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConditionsOpen(false)}
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1638,6 +1638,7 @@ export interface paths {
               patient: components["schemas"]["Patient"]
               readings: components["schemas"]["Reading"][]
               thresholds: components["schemas"]["Thresholds"]
+              conditions: components["schemas"]["PatientCondition"][]
             }
           }
         }
@@ -1903,6 +1904,105 @@ export interface paths {
     }
     post?: never
     delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/doctors/me/patients/{patientId}/conditions": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Flag a high-risk condition for a patient */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          patientId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json": {
+            condition: string
+          }
+        }
+      }
+      responses: {
+        /** @description Condition flagged */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["PatientCondition"]
+          }
+        }
+        401: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        403: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        422: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/doctors/me/patients/{patientId}/conditions/{conditionId}": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Remove a flagged condition for a patient */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          patientId: string
+          conditionId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Condition removed */
+        204: {
+          headers: { [name: string]: unknown }
+          content?: never
+        }
+        401: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        403: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+      }
+    }
     options?: never
     head?: never
     patch?: never
@@ -2642,6 +2742,13 @@ export interface components {
       postMealGlucoseHigh: number
       systolicHigh: number
       diastolicHigh: number
+    }
+    PatientCondition: {
+      /** Format: uuid */
+      id: string
+      condition: string
+      /** Format: date-time */
+      createdAt: string
     }
     Invite: {
       /** Format: uuid */
