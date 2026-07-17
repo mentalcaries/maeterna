@@ -42,8 +42,6 @@ import { cn } from "@/lib/utils"
 import { adaptReading } from "@/lib/readings"
 import { type TimeRange, RANGE_LABELS, rangeToFrom } from "@/lib/time-range"
 import type { ApiReading } from "@/lib/reading-history"
-import { exportReadingsToExcel } from "@/lib/export-excel"
-import { exportReadingsToPDF } from "@/lib/export-pdf"
 
 export const Route = createFileRoute("/doctor/patients/$id")({
   component: PatientDetailPage,
@@ -227,13 +225,15 @@ function PatientDetailPage() {
     })
   }
 
-  function handleExportExcel() {
+  async function handleExportExcel() {
     setExportOpen(false)
+    const { exportReadingsToExcel } = await import("@/lib/export-excel")
     exportReadingsToExcel(allReadings, patientName, displayUnit)
   }
 
-  function handleExportPDF() {
+  async function handleExportPDF() {
     setExportOpen(false)
+    const { exportReadingsToPDF } = await import("@/lib/export-pdf")
     exportReadingsToPDF(allReadings, patientName, displayUnit)
   }
 
@@ -294,7 +294,7 @@ function PatientDetailPage() {
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-                    onClick={handleExportExcel}
+                    onClick={() => void handleExportExcel()}
                   >
                     <RiFileExcel2Line className="size-4 text-green-600" />
                     Export as Excel
@@ -302,7 +302,7 @@ function PatientDetailPage() {
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors hover:bg-muted"
-                    onClick={handleExportPDF}
+                    onClick={() => void handleExportPDF()}
                   >
                     <RiFilePdfLine className="size-4 text-red-500" />
                     Export as PDF

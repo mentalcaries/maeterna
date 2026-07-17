@@ -1,12 +1,31 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router"
-import { useSyncExternalStore } from "react"
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { lazy, Suspense, useSyncExternalStore } from "react"
 import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen"
 import {
   isAccountSuspended,
   subscribeAccountSuspended,
 } from "@/lib/account-suspended"
+
+const DevelopmentTools = import.meta.env.DEV
+  ? lazy(async () => {
+      const [{ TanStackRouterDevtools }, { ReactQueryDevtools }] =
+        await Promise.all([
+          import("@tanstack/react-router-devtools"),
+          import("@tanstack/react-query-devtools"),
+        ])
+
+      return {
+        default: function DevelopmentTools() {
+          return (
+            <>
+              <TanStackRouterDevtools position="bottom-right" />
+              <ReactQueryDevtools initialIsOpen={false} />
+            </>
+          )
+        },
+      }
+    })
+  : null
 
 export const Route = createRootRoute({
   notFoundComponent: () => (
@@ -41,8 +60,11 @@ function RootComponent() {
           </a>
         </nav>
       </footer>
-      <TanStackRouterDevtools position="bottom-right" />
-      <ReactQueryDevtools initialIsOpen={false} />
+      {DevelopmentTools && (
+        <Suspense fallback={null}>
+          <DevelopmentTools />
+        </Suspense>
+      )}
     </>
   )
 }
