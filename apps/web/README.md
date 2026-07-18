@@ -4,11 +4,15 @@ React SPA for Maeterna's three portals: patient, doctor, and admin. Talks to the
 
 ## Stack
 
-- **Routing**: TanStack Router, file-based (`src/routes/`) — route tree is auto-generated into `src/routeTree.gen.ts`, never edit it directly
+- **Routing**: TanStack Router, file-based (`src/routes/`). Every non-root
+  route component is automatically code-split and loaded on demand;
+  `src/routeTree.gen.ts` is generated, so never edit it directly.
 - **Data**: TanStack Query + [`openapi-fetch`](https://openapi-ts.dev/openapi-fetch/), typed against a generated `src/lib/api.types.ts`
 - **Auth**: [Better Auth](https://www.better-auth.com/) client (magic link, Google, passkey)
 - **UI**: Tailwind CSS + shadcn/ui components, re-exported from `packages/ui` as `components/<name>`
 - **Build**: [Vite+](https://viteplus.dev/) (`vp`)
+
+TanStack Router and React Query devtools load only in development builds.
 
 ## Structure
 
