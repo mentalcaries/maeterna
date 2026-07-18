@@ -7,7 +7,6 @@ Maeterna is a maternal health monitoring app for pregnant women and their OB-GYN
 ```
 apps/web/       React SPA (patient / doctor / admin portals) — see apps/web/README.md
 apps/api/       Hono API on Cloudflare Workers + D1        — see apps/api/README.md
-packages/ui/    Shared component library (shadcn/ui, Base UI, Tailwind)
 ```
 
 This is a pnpm workspace managed with [Turborepo](https://turbo.build/) and [Vite+](https://viteplus.dev/) (`vp`), a unified toolchain wrapping Vite, Vitest, Oxlint, and Oxfmt.
