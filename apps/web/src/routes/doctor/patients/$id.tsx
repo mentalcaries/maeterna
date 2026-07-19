@@ -60,7 +60,7 @@ const CONDITION_CATEGORIES = [
       "Type 1 Diabetes",
       "Type 2 Diabetes",
       "Gestational Diabetes",
-      "PCOS",
+      "PMOS",
       "Steroid Use",
     ],
   },
@@ -82,11 +82,26 @@ const CONDITION_CATEGORIES = [
       "Anemia",
       "Advanced Maternal Age",
       "Rh-Negative",
+      "IVF Pregnancy",
+      "Hx Preterm Delivery",
+    ],
+  },
+  {
+    label: "Fetal Risk",
+    variant: "critical" as const,
+    conditions: [
+      "Fetal Anomaly Detected",
+      "Twin Pregnancy",
+      "Multiple Pregnancy",
+      "Fetal Growth Restriction",
     ],
   },
 ] as const
 
-const CONDITION_VARIANT_MAP = new Map<string, "warning" | "info" | "secondary">(
+const CONDITION_VARIANT_MAP = new Map<
+  string,
+  "warning" | "info" | "secondary" | "critical"
+>(
   CONDITION_CATEGORIES.flatMap((cat) =>
     cat.conditions.map((cond) => [cond, cat.variant])
   )
@@ -96,7 +111,7 @@ const PREDEFINED_CONDITION_SET = new Set(CONDITION_VARIANT_MAP.keys())
 
 function getConditionVariant(
   condition: string
-): "warning" | "info" | "secondary" {
+): "warning" | "info" | "secondary" | "critical" {
   return CONDITION_VARIANT_MAP.get(condition) ?? "info"
 }
 
