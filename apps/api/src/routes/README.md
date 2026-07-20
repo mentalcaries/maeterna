@@ -43,6 +43,7 @@ Grant/log responses are enriched with doctor/institution/department display name
 ## `readings.ts`
 
 - `GET /patients/me/readings?type=&from=&limit=&offset=` / `POST /patients/me/readings` _(patient only)_ — list or log your own glucose / blood-pressure readings, paginated, optionally filtered to `timestamp >= from`.
+- `PATCH /patients/me/readings/{readingId}` / `DELETE /patients/me/readings/{readingId}` _(patient only)_ — correct or permanently delete a patient-entered reading. Both `patientId` and `loggedById` must match the authenticated patient; doctor-entered, other-patient, and missing readings return `404`.
 - `POST /patients/{patientId}/readings` _(doctor)_ — log a reading on behalf of a patient; requires an active access grant (checked via `doctorHasAccess` from `../lib/access`). Request body is a discriminated union on `type` that also constrains `context` (`glucose` → `fasted`/`post_meal`, `blood_pressure` → `morning`/`evening`) and requires `value2` for `blood_pressure`.
 - `PATCH /readings/{readingId}/notes` _(doctor)_ — add/edit a note on a reading; also requires an active access grant.
 
