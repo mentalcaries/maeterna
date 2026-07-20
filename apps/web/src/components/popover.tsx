@@ -12,7 +12,7 @@ function PopoverContent({
 }: React.ComponentProps<typeof PopoverPrimitive.Popup>) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner>
+      <PopoverPrimitive.Positioner className="z-[60]">
         <PopoverPrimitive.Popup
           className={cn(
             "z-50 rounded-lg border border-border bg-background p-3 shadow-md outline-none",
