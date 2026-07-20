@@ -5,7 +5,7 @@ REST API for Maeterna, built on [Hono](https://hono.dev/) and deployed to Cloudf
 ## Domain model
 
 - **Roles**: `patient`, `doctor`, `admin` — attached to the user record, drives authorization
-- **Readings**: `glucose` or `blood_pressure`, with a type-specific context and a `severity` (`normal` / `high`) computed on read against current thresholds. Patients can correct or delete readings they entered themselves; doctor-entered readings remain read-only to patients.
+- **Readings**: `glucose` or `blood_pressure`, with a `context` (e.g. `fasting`, `post_meal`), and a `severity` (`normal` / `warning` / `critical`) computed at write time against thresholds
 - **Thresholds**: platform defaults, overridable per-patient by a doctor
 - **Access grants**: patients grant an individual doctor or a whole department read access; revocable; doctor reads are logged to `access_log`
 - **Doctor affiliations**: a doctor has zero or more affiliations, each either a seeded public institution (optionally with a department) or a free-text private-practice name
@@ -72,11 +72,6 @@ pnpm run cf-typegen   # regenerate the CloudflareBindings type after changing wr
 ## API contract
 
 `/openapi.json` is generated dynamically at runtime from the `@hono/zod-openapi` route definitions (`src/routes/*.ts`, wired up via `app.doc(...)` in `src/index.ts`) — that's the real, always-accurate contract.
-
-Patient reading history supports `PATCH` and `DELETE` at
-`/patients/me/readings/{readingId}`. Both operations require the reading's
-`patientId` and `loggedById` to match the authenticated patient; inaccessible
-readings return `404`.
 
 `maeterna-openapi.yaml` in this directory is a hand-maintained reference doc and **has drifted from the live routes** — don't treat it as ground truth. If `apps/web`'s generated `api.types.ts` needs updating, regenerate it from a running server's `/openapi.json`, not from this yaml file.
 

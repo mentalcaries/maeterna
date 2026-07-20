@@ -30,7 +30,6 @@ export interface paths {
           "application/json": {
             /** @enum {string} */
             role: "patient" | "doctor"
-            /** @enum {boolean} */
             termsAccepted: true
           }
         }
@@ -755,163 +754,6 @@ export interface paths {
     options?: never
     head?: never
     patch?: never
-    trace?: never
-  }
-  "/patients/me/readings/{readingId}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    post?: never
-    /** Delete a patient-entered reading */
-    delete: {
-      parameters: {
-        query?: never
-        header?: never
-        path: {
-          readingId: string
-        }
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        /** @description Reading deleted */
-        204: {
-          headers: {
-            [name: string]: unknown
-          }
-          content?: never
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    options?: never
-    head?: never
-    /** Update a patient-entered reading */
-    patch: {
-      parameters: {
-        query?: never
-        header?: never
-        path: {
-          readingId: string
-        }
-        cookie?: never
-      }
-      requestBody: {
-        content: {
-          "application/json":
-            | {
-                /** @enum {string} */
-                type: "glucose"
-                value1: number
-                /** @enum {string} */
-                unit: "mg/dL" | "mmol/L"
-                /** @enum {string} */
-                context: "fasted" | "post_meal"
-                /** Format: date-time */
-                timestamp: string
-              }
-            | {
-                /** @enum {string} */
-                type: "blood_pressure"
-                value1: number
-                value2: number
-                /** @enum {string} */
-                unit: "mmHg"
-                /** @enum {string} */
-                context: "morning" | "evening"
-                /** Format: date-time */
-                timestamp: string
-              }
-        }
-      }
-      responses: {
-        /** @description Reading updated */
-        200: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Reading"]
-          }
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
     trace?: never
   }
   "/patients/{patientId}/readings": {
@@ -1985,159 +1827,6 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  "/doctors/me/patients/{patientId}/conditions": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Flag a high-risk condition for a patient */
-    post: {
-      parameters: {
-        query?: never
-        header?: never
-        path: {
-          patientId: string
-        }
-        cookie?: never
-      }
-      requestBody: {
-        content: {
-          "application/json": {
-            condition: string
-          }
-        }
-      }
-      responses: {
-        /** @description Condition flagged */
-        201: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["PatientCondition"]
-          }
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/doctors/me/patients/{patientId}/conditions/{conditionId}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    post?: never
-    /** Remove a flagged condition for a patient */
-    delete: {
-      parameters: {
-        query?: never
-        header?: never
-        path: {
-          patientId: string
-          conditionId: string
-        }
-        cookie?: never
-      }
-      requestBody?: never
-      responses: {
-        /** @description Condition removed */
-        204: {
-          headers: {
-            [name: string]: unknown
-          }
-          content?: never
-        }
-        /** @description Missing or invalid session token */
-        401: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Authenticated but insufficient permissions */
-        403: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Resource not found */
-        404: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-        /** @description Validation error */
-        422: {
-          headers: {
-            [name: string]: unknown
-          }
-          content: {
-            "application/json": components["schemas"]["Error"]
-          }
-        }
-      }
-    }
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   "/doctors/me/patients/{patientId}/due-date": {
     parameters: {
       query?: never
@@ -2215,6 +1904,105 @@ export interface paths {
     }
     post?: never
     delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/doctors/me/patients/{patientId}/conditions": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Flag a high-risk condition for a patient */
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          patientId: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          "application/json": {
+            condition: string
+          }
+        }
+      }
+      responses: {
+        /** @description Condition flagged */
+        201: {
+          headers: {
+            [name: string]: unknown
+          }
+          content: {
+            "application/json": components["schemas"]["PatientCondition"]
+          }
+        }
+        401: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        403: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        422: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/doctors/me/patients/{patientId}/conditions/{conditionId}": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Remove a flagged condition for a patient */
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          patientId: string
+          conditionId: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Condition removed */
+        204: {
+          headers: { [name: string]: unknown }
+          content?: never
+        }
+        401: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+        403: {
+          headers: { [name: string]: unknown }
+          content: { "application/json": components["schemas"]["Error"] }
+        }
+      }
+    }
     options?: never
     head?: never
     patch?: never
@@ -2956,6 +2744,7 @@ export interface components {
       diastolicHigh: number
     }
     PatientCondition: {
+      /** Format: uuid */
       id: string
       condition: string
       /** Format: date-time */

@@ -13,7 +13,6 @@ import {
   toLocalDateStr,
 } from "@/lib/reading-history"
 import type { ApiReading, BPSlot } from "@/lib/reading-history"
-import { formatReadingValue } from "@/lib/readings"
 import { ReadingHistoryCell } from "./ReadingHistoryCell"
 
 const BP_SLOTS: { key: BPSlot; label: string }[] = [
@@ -75,7 +74,7 @@ export function BPHistoryTable({
                         <ReadingHistoryCell
                           key={r.id}
                           reading={r}
-                          valueLabel={formatReadingValue(r)}
+                          valueLabel={`${r.value1}/${r.value2 ?? "?"} mmHg`}
                           onEditNote={onEditNote}
                           onHoverReading={onHoverReading}
                         />
