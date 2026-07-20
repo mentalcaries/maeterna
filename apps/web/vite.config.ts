@@ -1,12 +1,18 @@
 import { defineConfig, lazyPlugins } from "vite-plus"
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: lazyPlugins(() => [
-    TanStackRouterVite(),
+    tanstackRouter({
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        splitBehavior: ({ routeId }) =>
+          routeId === "__root__" ? [] : [["component"]],
+      },
+    }),
     tailwindcss(),
     viteReact(),
   ]),
