@@ -5,17 +5,19 @@ import { reading } from "../db/schema"
 import { sessionMiddleware, requireRole } from "../middleware/session"
 import { ReadingSchema, ReadingTypeSchema, responses } from "../schemas"
 import { resolveThresholds } from "../lib/thresholds"
-import { serializeReading } from "../lib/readings"
+import { canonicalReadingValues, serializeReading } from "../lib/readings"
 import { doctorHasAccess } from "../lib/access"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const MMOL_TO_MGDL = 18.0182
-
-function toMgDl(value: number, unit: string): number {
-  return unit === "mmol/L" ? Math.round(value * MMOL_TO_MGDL * 10) / 10 : value
+function patientEnteredReadingCondition(readingId: string, patientId: string) {
+  return and(
+    eq(reading.id, readingId),
+    eq(reading.patientId, patientId),
+    eq(reading.loggedById, patientId)
+  )
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -42,6 +44,16 @@ const bpBodySchema = z.object({
 const readingBodySchema = z.discriminatedUnion("type", [
   glucoseBodySchema,
   bpBodySchema,
+])
+
+const updateReadingBodySchema = z.discriminatedUnion("type", [
+  glucoseBodySchema.omit({ notes: true }).extend({
+    value1: z.number().positive(),
+  }),
+  bpBodySchema.omit({ notes: true }).extend({
+    value1: z.number().positive(),
+    value2: z.number().positive(),
+  }),
 ])
 
 const listOwnReadingsRoute = createRoute({
@@ -111,6 +123,41 @@ const logReadingForPatientRoute = createRoute({
   },
 })
 
+const updateOwnReadingRoute = createRoute({
+  method: "patch",
+  path: "/patients/me/readings/{readingId}",
+  tags: ["Readings"],
+  summary: "Update a patient-entered reading",
+  request: {
+    params: z.object({ readingId: z.string().min(1) }),
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateReadingBodySchema } },
+    },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ReadingSchema } },
+      description: "Reading updated",
+    },
+    ...responses,
+  },
+})
+
+const deleteOwnReadingRoute = createRoute({
+  method: "delete",
+  path: "/patients/me/readings/{readingId}",
+  tags: ["Readings"],
+  summary: "Delete a patient-entered reading",
+  request: {
+    params: z.object({ readingId: z.string().min(1) }),
+  },
+  responses: {
+    204: { description: "Reading deleted" },
+    ...responses,
+  },
+})
+
 const addNoteRoute = createRoute({
   method: "patch",
   path: "/readings/{readingId}/notes",
@@ -137,6 +184,8 @@ const addNoteRoute = createRoute({
 export function registerReadingRoutes(app: AppRouter) {
   app.use("/patients/me/readings", sessionMiddleware)
   app.use("/patients/me/readings", requireRole("patient"))
+  app.use("/patients/me/readings/:readingId", sessionMiddleware)
+  app.use("/patients/me/readings/:readingId", requireRole("patient"))
   // Note: /patients/:patientId/readings intentionally has no requireRole middleware
   // here because the :patientId pattern also matches /patients/me/readings, which
   // would incorrectly block patients. The doctor role check is done inline below.
@@ -177,9 +226,6 @@ export function registerReadingRoutes(app: AppRouter) {
     const body = c.req.valid("json")
     const db = createDb(c.env.DB)
 
-    const value1 =
-      body.type === "glucose" ? toMgDl(body.value1, body.unit) : body.value1
-    const unit = body.type === "glucose" ? "mg/dL" : "mmHg"
     const now = new Date()
 
     const newReading = {
@@ -187,9 +233,7 @@ export function registerReadingRoutes(app: AppRouter) {
       patientId: u.id,
       loggedById: u.id,
       type: body.type,
-      value1,
-      value2: body.type === "blood_pressure" ? body.value2 : null,
-      unit,
+      ...canonicalReadingValues(body),
       context: body.context,
       notes: body.notes ?? null,
       timestamp: new Date(body.timestamp),
@@ -199,6 +243,51 @@ export function registerReadingRoutes(app: AppRouter) {
     const { thresholds } = await resolveThresholds(db, u.id)
     await db.insert(reading).values(newReading)
     return c.json(serializeReading(newReading, thresholds), 201)
+  })
+
+  // PATCH /patients/me/readings/{readingId}
+  app.openapi(updateOwnReadingRoute, async (c) => {
+    const u = c.get("user")
+    const { readingId } = c.req.valid("param")
+    const body = c.req.valid("json")
+    const db = createDb(c.env.DB)
+    const ownership = patientEnteredReadingCondition(readingId, u.id)
+
+    const existing = await db.select().from(reading).where(ownership).get()
+    if (!existing) raise(404, "Reading not found")
+    if (existing.type !== body.type)
+      raise(422, "Reading type cannot be changed")
+
+    const [updated, { thresholds }] = await Promise.all([
+      db
+        .update(reading)
+        .set({
+          ...canonicalReadingValues(body),
+          context: body.context,
+          timestamp: new Date(body.timestamp),
+        })
+        .where(ownership)
+        .returning(),
+      resolveThresholds(db, u.id),
+    ])
+    if (!updated[0]) raise(404, "Reading not found")
+
+    return c.json(serializeReading(updated[0], thresholds))
+  })
+
+  // DELETE /patients/me/readings/{readingId}
+  app.openapi(deleteOwnReadingRoute, async (c) => {
+    const u = c.get("user")
+    const { readingId } = c.req.valid("param")
+    const db = createDb(c.env.DB)
+
+    const deleted = await db
+      .delete(reading)
+      .where(patientEnteredReadingCondition(readingId, u.id))
+      .returning({ id: reading.id })
+    if (!deleted[0]) raise(404, "Reading not found")
+
+    return c.body(null, 204)
   })
 
   // POST /patients/{patientId}/readings (doctor)
@@ -213,18 +302,12 @@ export function registerReadingRoutes(app: AppRouter) {
     if (!(await doctorHasAccess(db, doctor.id, patientId)))
       raise(403, "No active access grant for this patient")
 
-    const value1 =
-      body.type === "glucose" ? toMgDl(body.value1, body.unit) : body.value1
-    const unit = body.type === "glucose" ? "mg/dL" : "mmHg"
-
     const newReading = {
       id: crypto.randomUUID(),
       patientId,
       loggedById: doctor.id,
       type: body.type,
-      value1,
-      value2: body.type === "blood_pressure" ? body.value2 : null,
-      unit,
+      ...canonicalReadingValues(body),
       context: body.context,
       notes: body.notes ?? null,
       timestamp: new Date(body.timestamp),
