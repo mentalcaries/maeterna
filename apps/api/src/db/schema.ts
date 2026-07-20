@@ -249,6 +249,18 @@ export const passkey = sqliteTable("passkey", {
   aaguid: text("aaguid"),
 })
 
+export const patientCondition = sqliteTable("patient_condition", {
+  id: text("id").primaryKey(),
+  patientId: text("patient_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  doctorId: text("doctor_id")
+    .notNull()
+    .references(() => user.id),
+  condition: text("condition").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+})
+
 export const userPreferences = sqliteTable("user_preferences", {
   userId: text("user_id")
     .primaryKey()

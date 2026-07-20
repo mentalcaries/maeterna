@@ -12,6 +12,7 @@ import {
   accessLog,
   reading,
   threshold,
+  patientCondition,
 } from "../db/schema"
 import { sessionMiddleware, requireRole } from "../middleware/session"
 import {
@@ -112,6 +113,12 @@ const listPatientsRoute = createRoute({
   },
 })
 
+const PatientConditionSchema = z.object({
+  id: z.string(),
+  condition: z.string(),
+  createdAt: z.string().datetime(),
+})
+
 const getPatientDetailRoute = createRoute({
   method: "get",
   path: "/doctors/me/patients/{patientId}",
@@ -129,6 +136,7 @@ const getPatientDetailRoute = createRoute({
             patient: PatientSchema,
             readings: z.array(ReadingSchema),
             thresholds: ThresholdsSchema,
+            conditions: z.array(PatientConditionSchema),
           }),
         },
       },
@@ -219,6 +227,48 @@ const setDueDateRoute = createRoute({
       },
       description: "Due date saved",
     },
+    ...responses,
+  },
+})
+
+const addConditionRoute = createRoute({
+  method: "post",
+  path: "/doctors/me/patients/{patientId}/conditions",
+  tags: ["Doctors"],
+  summary: "Flag a high-risk condition for a patient",
+  request: {
+    params: z.object({ patientId: z.string().min(1) }),
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: z.object({ condition: z.string().min(1).max(100) }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      content: { "application/json": { schema: PatientConditionSchema } },
+      description: "Condition flagged",
+    },
+    ...responses,
+  },
+})
+
+const deleteConditionRoute = createRoute({
+  method: "delete",
+  path: "/doctors/me/patients/{patientId}/conditions/{conditionId}",
+  tags: ["Doctors"],
+  summary: "Remove a flagged condition for a patient",
+  request: {
+    params: z.object({
+      patientId: z.string().min(1),
+      conditionId: z.string().min(1),
+    }),
+  },
+  responses: {
+    204: { description: "Condition removed" },
     ...responses,
   },
 })
@@ -389,16 +439,21 @@ export function registerDoctorRoutes(app: AppRouter) {
       .where(eq(patientProfile.userId, patientId))
       .get()
 
-    const conditions = [eq(reading.patientId, patientId)]
-    if (from) conditions.push(gte(reading.timestamp, new Date(from)))
+    const readingFilters = [eq(reading.patientId, patientId)]
+    if (from) readingFilters.push(gte(reading.timestamp, new Date(from)))
 
-    const [readings, { thresholds }] = await Promise.all([
+    const [readings, { thresholds }, patientConditions] = await Promise.all([
       db
         .select()
         .from(reading)
-        .where(and(...conditions))
+        .where(and(...readingFilters))
         .orderBy(desc(reading.timestamp)),
       resolveThresholds(db, patientId),
+      db
+        .select()
+        .from(patientCondition)
+        .where(eq(patientCondition.patientId, patientId))
+        .orderBy(patientCondition.createdAt),
     ])
 
     return c.json({
@@ -416,6 +471,11 @@ export function registerDoctorRoutes(app: AppRouter) {
       },
       readings: readings.map((r) => serializeReading(r, thresholds)),
       thresholds,
+      conditions: patientConditions.map((c) => ({
+        id: c.id,
+        condition: c.condition,
+        createdAt: c.createdAt.toISOString(),
+      })),
     })
   })
 
@@ -499,6 +559,51 @@ export function registerDoctorRoutes(app: AppRouter) {
       })
 
     return c.json(body)
+  })
+
+  // POST /doctors/me/patients/{patientId}/conditions
+  app.openapi(addConditionRoute, async (c) => {
+    const doctor = c.get("user")
+    const { patientId } = c.req.valid("param")
+    const { condition } = c.req.valid("json")
+    const db = createDb(c.env.DB)
+
+    if (!(await doctorHasAccess(db, doctor.id, patientId)))
+      raise(403, "No active access grant for this patient")
+
+    const now = new Date()
+    const id = crypto.randomUUID()
+    await db.insert(patientCondition).values({
+      id,
+      patientId,
+      doctorId: doctor.id,
+      condition,
+      createdAt: now,
+    })
+
+    return c.json({ id, condition, createdAt: now.toISOString() }, 201)
+  })
+
+  // DELETE /doctors/me/patients/{patientId}/conditions/{conditionId}
+  app.openapi(deleteConditionRoute, async (c) => {
+    const doctor = c.get("user")
+    const { patientId, conditionId } = c.req.valid("param")
+    const db = createDb(c.env.DB)
+
+    if (!(await doctorHasAccess(db, doctor.id, patientId)))
+      raise(403, "No active access grant for this patient")
+
+    await db
+      .delete(patientCondition)
+      .where(
+        and(
+          eq(patientCondition.id, conditionId),
+          eq(patientCondition.patientId, patientId),
+          eq(patientCondition.doctorId, doctor.id)
+        )
+      )
+
+    return c.body(null, 204)
   })
 
   // PUT /doctors/me/patients/{patientId}/due-date
