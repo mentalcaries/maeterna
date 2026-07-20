@@ -14,20 +14,13 @@ import {
   RiTimeLine,
   RiCalendarLine,
 } from "@remixicon/react"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/popover"
-import { Calendar } from "@/components/calendar"
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/select"
 import type { ReadingType } from "@/mock/db"
+import { isSuspiciousGlucoseValue, type GlucoseUnit } from "@/lib/glucose"
+import { combineLocalDateAndHour } from "@/lib/reading-date-time"
+import { ReadingDateTimePicker } from "./ReadingDateTimePicker"
 
 type MealContext = "fasted" | "post_meal"
 type WhenOption = "now" | "custom"
-type GlucoseUnit = "mg/dL" | "mmol/L"
 
 export type ReadingBody =
   | {
@@ -138,27 +131,6 @@ const WHEN_OPTIONS: {
   },
 ]
 
-const TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
-  const h24 = String(i).padStart(2, "0")
-  const period = i < 12 ? "AM" : "PM"
-  const h12 = i === 0 ? 12 : i > 12 ? i - 12 : i
-  return { value: `${h24}:00`, label: `${h12}:00 ${period}` }
-})
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
-
-function valueSuspicious(v: number, unit: GlucoseUnit): boolean {
-  if (unit === "mmol/L" && v > 35) return true
-  if (unit === "mg/dL" && v < 20 && v > 0) return true
-  return false
-}
-
 export function ReadingForm({
   onSubmit,
   isPending = false,
@@ -171,7 +143,6 @@ export function ReadingForm({
   const [mealContext, setMealContext] = useState<MealContext>("fasted")
   const [when, setWhen] = useState<WhenOption>("now")
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined)
-  const [customDateOpen, setCustomDateOpen] = useState(false)
   const [customTime, setCustomTime] = useState<string>("06:00")
   const [notes, setNotes] = useState("")
   const [error, setError] = useState("")
@@ -206,7 +177,7 @@ export function ReadingForm({
       setUnitPrompt(null)
       return
     }
-    if (valueSuspicious(v, glucoseUnit)) {
+    if (isSuspiciousGlucoseValue(v, glucoseUnit)) {
       showPromptFor(glucoseUnit)
     } else {
       setUnitPrompt(null)
@@ -215,11 +186,9 @@ export function ReadingForm({
 
   function buildTimestamp(): string | null {
     if (when === "now") return new Date().toISOString()
-    if (!customDate) return null
-    const [h] = customTime.split(":").map(Number)
-    const dt = new Date(customDate)
-    dt.setHours(h, 0, 0, 0)
-    return dt.toISOString()
+    return (
+      combineLocalDateAndHour(customDate, customTime)?.toISOString() ?? null
+    )
   }
 
   async function doSubmit(activeUnit: GlucoseUnit) {
@@ -316,7 +285,7 @@ export function ReadingForm({
     if (
       type === "glucose" &&
       !unitDismissed &&
-      valueSuspicious(v1, glucoseUnit)
+      isSuspiciousGlucoseValue(v1, glucoseUnit)
     ) {
       showPromptFor(glucoseUnit)
       setPendingSubmit(true)
@@ -519,51 +488,12 @@ export function ReadingForm({
           ))}
         </div>
         {when === "custom" && (
-          <div className="flex gap-2">
-            <Popover open={customDateOpen} onOpenChange={setCustomDateOpen}>
-              <PopoverTrigger
-                type="button"
-                className="flex h-10 flex-1 items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-normal hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                <RiCalendarLine className="size-4 shrink-0 text-muted-foreground" />
-                {customDate ? (
-                  formatDate(customDate)
-                ) : (
-                  <span className="text-muted-foreground">Select date</span>
-                )}
-              </PopoverTrigger>
-              <PopoverContent>
-                <Calendar
-                  mode="single"
-                  selected={customDate}
-                  onSelect={(d) => {
-                    setCustomDate(d)
-                    setCustomDateOpen(false)
-                  }}
-                  disabled={{ after: new Date() }}
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Select
-              value={customTime}
-              onValueChange={setCustomTime}
-              items={Object.fromEntries(
-                TIME_OPTIONS.map((t) => [t.value, t.label])
-              )}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_OPTIONS.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ReadingDateTimePicker
+            date={customDate}
+            time={customTime}
+            onDateChange={setCustomDate}
+            onTimeChange={setCustomTime}
+          />
         )}
       </div>
 
