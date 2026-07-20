@@ -1,40 +1,6 @@
 import { computeSeverity, type Thresholds } from "./thresholds"
 import type { reading } from "../db/schema"
 
-const MMOL_TO_MGDL = 18.0182
-
-type ReadingWriteValues =
-  | {
-      type: "glucose"
-      value1: number
-      unit: "mg/dL" | "mmol/L"
-    }
-  | {
-      type: "blood_pressure"
-      value1: number
-      value2: number
-      unit: "mmHg"
-    }
-
-export function canonicalReadingValues(body: ReadingWriteValues) {
-  if (body.type === "glucose") {
-    return {
-      value1:
-        body.unit === "mmol/L"
-          ? Math.round(body.value1 * MMOL_TO_MGDL * 10) / 10
-          : body.value1,
-      value2: null,
-      unit: "mg/dL" as const,
-    }
-  }
-
-  return {
-    value1: body.value1,
-    value2: body.value2,
-    unit: "mmHg" as const,
-  }
-}
-
 export function serializeReading(
   r: typeof reading.$inferSelect,
   thresholds: Thresholds

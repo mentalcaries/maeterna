@@ -3,8 +3,6 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { ReadingList } from "@/components/readings/ReadingList"
-import { EditReadingDialog } from "@/components/readings/EditReadingDialog"
-import { DeleteReadingDialog } from "@/components/readings/DeleteReadingDialog"
 import {
   Select,
   SelectTrigger,
@@ -16,9 +14,6 @@ import { Label } from "@/components/label"
 import { adaptReading } from "@/lib/readings"
 import { cn } from "@/lib/utils"
 import { type TimeRange, RANGE_LABELS, rangeToFrom } from "@/lib/time-range"
-import { useSession } from "@/lib/session"
-import { getAppUser } from "@/lib/auth-client"
-import type { Reading } from "@/mock/db"
 
 export const Route = createFileRoute("/patient/history")({
   component: PatientHistoryPage,
@@ -29,9 +24,6 @@ function PatientHistoryPage() {
     "all" | "glucose" | "blood_pressure"
   >("all")
   const [range, setRange] = useState<TimeRange>("month")
-  const [editingReading, setEditingReading] = useState<Reading | null>(null)
-  const [deletingReading, setDeletingReading] = useState<Reading | null>(null)
-  const { data: sessionData } = useSession()
 
   const { data } = useQuery({
     queryKey: ["readings", typeFilter, range],
@@ -57,7 +49,6 @@ function PatientHistoryPage() {
   const readings = apiReadings.map(adaptReading)
   const glucoseUnit =
     (prefsData?.data?.glucoseUnit as "mg/dL" | "mmol/L" | undefined) ?? "mg/dL"
-  const user = getAppUser(sessionData)
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -124,26 +115,6 @@ function PatientHistoryPage() {
         readings={readings}
         glucoseUnit={glucoseUnit}
         emptyMessage="No readings match your filter."
-        editableById={user?.id}
-        onEdit={setEditingReading}
-        onDelete={setDeletingReading}
-      />
-
-      <EditReadingDialog
-        reading={editingReading}
-        glucoseUnit={glucoseUnit}
-        open={editingReading !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditingReading(null)
-        }}
-      />
-      <DeleteReadingDialog
-        reading={deletingReading}
-        glucoseUnit={glucoseUnit}
-        open={deletingReading !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeletingReading(null)
-        }}
       />
     </div>
   )

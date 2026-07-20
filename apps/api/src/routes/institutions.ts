@@ -1,5 +1,6 @@
 import { createRoute } from "@hono/zod-openapi"
 import { z } from "@hono/zod-openapi"
+import { eq } from "drizzle-orm"
 import { createDb } from "../db"
 import { institution, department } from "../db/schema"
 import { sessionMiddleware } from "../middleware/session"

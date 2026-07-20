@@ -1,20 +1,44 @@
 import { cn } from "@/lib/utils"
-import { formatReadingValue, readingContext } from "@/lib/readings"
+import { formatGlucose } from "@/lib/glucose"
 import type { Reading } from "@/mock/db"
-import { Button } from "@/components/button"
-import { RiDeleteBinLine, RiEditLine } from "@remixicon/react"
 
 interface ReadingListProps {
   readings: Reading[]
   glucoseUnit?: "mg/dL" | "mmol/L"
   emptyMessage?: string
-  editableById?: string
-  onEdit?: (reading: Reading) => void
-  onDelete?: (reading: Reading) => void
+}
+
+const MEAL_LABELS: Record<string, string> = {
+  fasted: "Fasted",
+  post_meal: "After eating",
+}
+
+const TIME_LABELS: Record<string, string> = {
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
+  before_bed: "Night",
+  at_clinic: "At clinic",
 }
 
 function readingSubtitle(r: Reading): string {
-  const parts = [readingContext(r)]
+  const parts: string[] = []
+
+  if (r.type === "glucose" && r.mealContext) {
+    parts.push(MEAL_LABELS[r.mealContext] ?? r.mealContext)
+  }
+
+  if (r.timeOfDay) {
+    parts.push(TIME_LABELS[r.timeOfDay] ?? r.timeOfDay)
+  } else if (!r.mealContext) {
+    const legacy: Record<string, string> = {
+      fasted: "Fasted",
+      post_meal: "After eating",
+      morning: "Morning",
+      evening: "Night",
+    }
+    parts.push(legacy[r.context] ?? r.context)
+  }
 
   const d = new Date(r.timestamp)
   const dateStr = d.toLocaleDateString("en-TT", {
@@ -35,9 +59,6 @@ export function ReadingList({
   readings,
   glucoseUnit = "mg/dL",
   emptyMessage = "No readings yet.",
-  editableById,
-  onEdit,
-  onDelete,
 }: ReadingListProps) {
   if (readings.length === 0) {
     return (
@@ -50,9 +71,10 @@ export function ReadingList({
   return (
     <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
       {readings.map((r) => {
-        const valueStr = formatReadingValue(r, glucoseUnit)
-        const canManage =
-          r.loggedById === editableById && Boolean(onEdit || onDelete)
+        const valueStr =
+          r.type === "blood_pressure"
+            ? `${r.value1}/${r.value2 ?? "?"} mmHg`
+            : formatGlucose(r.value1, glucoseUnit)
 
         return (
           <div key={r.id} className="flex flex-col gap-1 p-4">
@@ -72,36 +94,6 @@ export function ReadingList({
             </div>
             {r.notes && (
               <p className="text-xs text-muted-foreground italic">{r.notes}</p>
-            )}
-            {canManage && (
-              <div className="mt-2 flex items-center justify-end gap-2">
-                {onEdit && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-11"
-                    aria-label={`Edit ${valueStr} reading`}
-                    onClick={() => onEdit(r)}
-                  >
-                    <RiEditLine className="size-4" />
-                    Edit
-                  </Button>
-                )}
-                {onDelete && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="h-11"
-                    aria-label={`Delete ${valueStr} reading`}
-                    onClick={() => onDelete(r)}
-                  >
-                    <RiDeleteBinLine className="size-4" />
-                    Delete
-                  </Button>
-                )}
-              </div>
             )}
           </div>
         )

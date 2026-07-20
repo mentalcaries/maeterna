@@ -113,13 +113,11 @@ const listPatientsRoute = createRoute({
   },
 })
 
-const PatientConditionSchema = z
-  .object({
-    id: z.string(),
-    condition: z.string(),
-    createdAt: z.string().datetime(),
-  })
-  .openapi("PatientCondition")
+const PatientConditionSchema = z.object({
+  id: z.string(),
+  condition: z.string(),
+  createdAt: z.string().datetime(),
+})
 
 const getPatientDetailRoute = createRoute({
   method: "get",
