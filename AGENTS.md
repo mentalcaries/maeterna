@@ -7,6 +7,7 @@
 - Start both apps from the root with `pnpm dev`. Do not run `vp dev` at the root; it is tooling configuration, not a Vite app. Target the web app with `pnpm --filter ./apps/web dev` and the API with `pnpm --filter maeterna-api dev`.
 - Run `vp check` from the root for formatting, linting, and type checking. `vp check --fix` applies formatting fixes. Staged files are checked with `vp check --fix`.
 - The formatter requires LF, two spaces, double quotes, no semicolons, 80-column lines, and trailing ES5 commas.
+- If no spec doc has been supplied for a feature, output your plan to a spec document in `docs/specs` and give the file a name that increments from the numerical prefix of the last file.
 
 ## Web
 
