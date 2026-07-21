@@ -113,7 +113,7 @@ function PatientOnboardingPage() {
 
   if (step === "invite-confirm" && inviteData) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
+      <div className="flex flex-1 flex-col items-center justify-center bg-background p-6">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
             <RiHeartPulseLine className="size-6 text-primary" />
@@ -181,7 +181,7 @@ function PatientOnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
+    <div className="flex flex-1 flex-col items-center justify-center bg-background p-6">
       <div className="mb-8 flex flex-col items-center gap-2 text-center">
         <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
           <RiHeartPulseLine className="size-6 text-primary" />

@@ -108,7 +108,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start bg-background px-6 pt-[12vh] pb-12">
+    <div className="flex flex-1 flex-col items-center justify-start bg-background px-6 pt-[12vh] pb-12">
       <AppHeader />
 
       {authError && (

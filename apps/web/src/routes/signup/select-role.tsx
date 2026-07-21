@@ -57,7 +57,7 @@ function SelectRolePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start bg-background px-6 pt-[12vh] pb-12">
+    <div className="flex flex-1 flex-col items-center justify-start bg-background px-6 pt-[12vh] pb-12">
       <div className="mb-8 flex flex-col items-center gap-2 text-center">
         <div className="flex size-28 items-center justify-center rounded-full">
           <img src="/logo.png" alt="Maeterna" className="rounded-full" />

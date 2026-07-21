@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <div className="min-h-screen overflow-x-clip bg-background pb-28">
+    <div className="min-h-screen overflow-x-clip bg-background">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link
@@ -58,15 +58,6 @@ function LandingPage() {
               })}
             >
               Sign in
-            </Link>
-            <Link
-              to="/login"
-              className={buttonVariants({
-                size: "lg",
-                className: "hidden sm:inline-flex",
-              })}
-            >
-              Get started
             </Link>
           </nav>
         </div>

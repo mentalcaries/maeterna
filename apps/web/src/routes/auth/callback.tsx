@@ -58,7 +58,7 @@ function CallbackPage() {
   }, [error, isPending, navigate, sessionData])
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex flex-1 items-center justify-center">
       <p className="text-sm text-muted-foreground">Signing you in…</p>
     </div>
   )

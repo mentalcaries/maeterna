@@ -44,14 +44,16 @@ function RootComponent() {
   )
 
   return (
-    <>
-      {suspended ? <AccountSuspendedScreen /> : <Outlet />}
-      <footer className="fixed right-0 bottom-0 left-0 z-30 border-t border-border bg-background py-2 text-center text-sm text-muted-foreground">
+    <div className="flex min-h-dvh flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {suspended ? <AccountSuspendedScreen /> : <Outlet />}
+      </div>
+      <footer className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-border bg-background px-4 py-3 text-center text-sm text-muted-foreground">
         <span>
           &copy; {new Date().getFullYear()}{" "}
           <a href="https://fullstackcollective.com">Full Stack Collective</a>
         </span>
-        <nav className="inline-flex gap-3 pl-3" aria-label="Legal">
+        <nav className="inline-flex gap-3" aria-label="Legal">
           <a href="/privacy.html" className="underline underline-offset-2">
             Privacy Policy
           </a>
@@ -65,6 +67,6 @@ function RootComponent() {
           <DevelopmentTools />
         </Suspense>
       )}
-    </>
+    </div>
   )
 }
