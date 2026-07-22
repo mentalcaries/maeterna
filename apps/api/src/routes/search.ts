@@ -26,7 +26,7 @@ const searchDoctorsRoute = createRoute({
   summary: "Search doctors by name",
   request: {
     query: z.object({
-      q: z.string().min(2),
+      q: z.string().trim().min(2),
       limit: z.coerce.number().int().min(1).max(100).default(20),
     }),
   },
@@ -56,7 +56,7 @@ export function registerSearchRoutes(app: AppRouter) {
   app.openapi(searchDoctorsRoute, async (c) => {
     const { q, limit } = c.req.valid("query")
     const db = createDb(c.env.DB)
-    const pattern = `%${q}%`
+    const terms = q.split(/\s+/)
 
     const doctors = await db
       .select({
@@ -71,10 +71,13 @@ export function registerSearchRoutes(app: AppRouter) {
         and(
           eq(userTable.role, "doctor"),
           eq(userTable.status, "active"),
-          or(
-            like(userTable.firstName, pattern),
-            like(userTable.lastName, pattern)
-          )
+          ...terms.map((term) => {
+            const pattern = `%${term}%`
+            return or(
+              like(userTable.firstName, pattern),
+              like(userTable.lastName, pattern)
+            )
+          })
         )
       )
       .limit(limit)
