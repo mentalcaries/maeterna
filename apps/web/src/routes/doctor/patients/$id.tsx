@@ -157,6 +157,9 @@ function PatientDetailPage() {
       const res = await apiClient.GET("/doctors/me/patients/{patientId}", {
         params: { path: { patientId }, query: { from: rangeToFrom(range) } },
       })
+      if (res.data) {
+        void queryClient.invalidateQueries({ queryKey: ["doctor-patients"] })
+      }
       return res.data ?? null
     },
   })

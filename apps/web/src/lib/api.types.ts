@@ -1558,6 +1558,8 @@ export interface paths {
               unreadAlertCount: number
               /** Format: date-time */
               lastReadingAt: string | null
+              /** Format: date-time */
+              lastViewedAt: string | null
             }[]
           }
         }
