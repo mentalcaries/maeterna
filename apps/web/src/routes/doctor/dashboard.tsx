@@ -3,14 +3,22 @@ import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent } from "@/components/card"
 import { Badge } from "@/components/badge"
 import { Button } from "@/components/button"
+import { PatientAccessGuideDialog } from "@/components/doctor/PatientAccessGuideDialog"
 import { apiClient } from "@/lib/api-client"
-import { RiAlertLine, RiArrowRightLine, RiRefreshLine } from "@remixicon/react"
+import {
+  RiAlertLine,
+  RiArrowRightLine,
+  RiRefreshLine,
+  RiShieldLine,
+} from "@remixicon/react"
+import { useState } from "react"
 
 export const Route = createFileRoute("/doctor/dashboard")({
   component: DoctorDashboardPage,
 })
 
 function DoctorDashboardPage() {
+  const [accessGuideOpen, setAccessGuideOpen] = useState(false)
   const {
     data: patientList = [],
     isPending,
@@ -33,15 +41,25 @@ function DoctorDashboardPage() {
             {isPending ? "Loading…" : `${patientList.length} patients assigned`}
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="w-full border-primary text-primary hover:bg-primary/5 sm:w-auto"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-        >
-          <RiRefreshLine className={isFetching ? "animate-spin" : ""} />
-          Refresh Patient List
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => setAccessGuideOpen(true)}
+          >
+            <RiShieldLine />
+            How to get access
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full border-primary text-primary hover:bg-primary/5 sm:w-auto"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            <RiRefreshLine className={isFetching ? "animate-spin" : ""} />
+            Refresh Patient List
+          </Button>
+        </div>
       </div>
 
       {patientList.length === 0 && !isPending ? (
@@ -93,6 +111,11 @@ function DoctorDashboardPage() {
           })}
         </div>
       )}
+
+      <PatientAccessGuideDialog
+        open={accessGuideOpen}
+        onOpenChange={setAccessGuideOpen}
+      />
     </div>
   )
 }
