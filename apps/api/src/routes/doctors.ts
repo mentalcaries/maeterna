@@ -1,5 +1,5 @@
 import { createRoute, z } from "@hono/zod-openapi"
-import { eq, and, or, isNull, inArray, gte, desc } from "drizzle-orm"
+import { eq, and, or, isNull, inArray, gte, desc, max } from "drizzle-orm"
 import { createDb } from "../db"
 import {
   user as userTable,
@@ -103,6 +103,7 @@ const listPatientsRoute = createRoute({
               patient: PatientSchema,
               unreadAlertCount: z.number().int(),
               lastReadingAt: z.string().datetime().nullable(),
+              lastViewedAt: z.string().datetime().nullable(),
             })
           ),
         },
@@ -344,10 +345,25 @@ export function registerDoctorRoutes(app: AppRouter) {
     const patientIds = [...new Set(grants.map((g) => g.patientId))]
     if (patientIds.length === 0) return c.json([])
 
-    const patients = await db
-      .select()
-      .from(userTable)
-      .where(inArray(userTable.id, patientIds))
+    const [patients, lastViews] = await Promise.all([
+      db.select().from(userTable).where(inArray(userTable.id, patientIds)),
+      db
+        .select({
+          patientId: accessLog.patientId,
+          lastViewedAt: max(accessLog.accessedAt),
+        })
+        .from(accessLog)
+        .where(
+          and(
+            eq(accessLog.doctorId, doctor.id),
+            inArray(accessLog.patientId, patientIds)
+          )
+        )
+        .groupBy(accessLog.patientId),
+    ])
+    const lastViewedAtByPatient = new Map(
+      lastViews.map(({ patientId, lastViewedAt }) => [patientId, lastViewedAt])
+    )
 
     const results = await Promise.all(
       patients.map(async (p) => {
@@ -401,6 +417,7 @@ export function registerDoctorRoutes(app: AppRouter) {
           },
           unreadAlertCount,
           lastReadingAt: lastReading?.timestamp?.toISOString() ?? null,
+          lastViewedAt: lastViewedAtByPatient.get(p.id)?.toISOString() ?? null,
         }
       })
     )

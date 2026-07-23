@@ -1037,6 +1037,10 @@ paths:
                       type: string
                       format: date-time
                       nullable: true
+                    lastViewedAt:
+                      type: string
+                      format: date-time
+                      nullable: true
         "401":
           $ref: "#/components/responses/Unauthorized"
 
