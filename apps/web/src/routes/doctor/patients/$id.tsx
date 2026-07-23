@@ -34,7 +34,13 @@ import {
 } from "@remixicon/react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/popover"
 import { Calendar } from "@/components/calendar"
-import { formatDueDate, isDueDateValid, parseDueDate } from "@/lib/due-date"
+import {
+  computeGestationalAge,
+  formatDueDate,
+  formatGestationalAge,
+  isDueDateValid,
+  parseDueDate,
+} from "@/lib/due-date"
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds"
 import type { Thresholds } from "@/lib/thresholds"
 import { mgdlToMmol, mmolToMgdl } from "@/lib/glucose"
@@ -294,6 +300,9 @@ function PatientDetailPage() {
   const alerts = allReadings.filter((r) => r.severity === "high")
   const patientName = `${patient.firstName} ${patient.lastName}`
   const conditions: PatientCondition[] = patientDetail?.conditions ?? []
+  const gestationalAge = patient.dueDate
+    ? computeGestationalAge(patient.dueDate)
+    : null
   const customConditions = conditions.filter(
     (c) => !PREDEFINED_CONDITION_SET.has(c.condition)
   )
@@ -483,6 +492,11 @@ function PatientDetailPage() {
               )}
             </PopoverContent>
           </Popover>
+          {gestationalAge && (
+            <span className="text-sm text-muted-foreground">
+              GA: {formatGestationalAge(gestationalAge)}
+            </span>
+          )}
           {dueDateMutation.isError && (
             <p className="text-sm text-destructive">Failed to save due date.</p>
           )}

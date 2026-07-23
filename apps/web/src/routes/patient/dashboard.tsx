@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import { Badge } from "@/components/badge"
-import { RiAddLine } from "@remixicon/react"
+import { RiAddLine, RiHeartPulseLine } from "@remixicon/react"
 import { useSession } from "@/lib/session"
 import { getAppUser } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
 import { ReadingList } from "@/components/readings/ReadingList"
 import { adaptReading } from "@/lib/readings"
+import { computeGestationalAge, formatGestationalAge } from "@/lib/due-date"
 
 export const Route = createFileRoute("/patient/dashboard")({
   component: PatientDashboardPage,
@@ -33,11 +34,24 @@ function PatientDashboardPage() {
     enabled: !!user,
   })
 
+  const { data: profileData } = useQuery({
+    queryKey: ["patient-profile"],
+    queryFn: async () => {
+      const res = await apiClient.GET("/patients/me")
+      return res.data ?? null
+    },
+    enabled: !!user,
+  })
+
   const apiReadings = data?.data?.data ?? []
   const recent = apiReadings.map(adaptReading)
   const alertCount = apiReadings.filter((r) => r.severity === "high").length
   const glucoseUnit =
     (prefsData?.data?.glucoseUnit as "mg/dL" | "mmol/L" | undefined) ?? "mg/dL"
+
+  const gestationalAge = profileData?.dueDate
+    ? computeGestationalAge(profileData.dueDate)
+    : null
 
   const hour = new Date().getHours()
   const greeting =
@@ -55,6 +69,20 @@ function PatientDashboardPage() {
           Track your glucose and blood pressure readings.
         </p>
       </div>
+
+      {gestationalAge && (
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <RiHeartPulseLine className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-medium">Gestational age</p>
+              <p className="text-2xl font-semibold">
+                {formatGestationalAge(gestationalAge)}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {alertCount > 0 && (
         <Card className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20">
