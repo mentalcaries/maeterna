@@ -720,6 +720,99 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /patients/me/readings/{readingId}:
+    parameters:
+      - name: readingId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+
+    patch:
+      tags: [Readings]
+      summary: Update a patient-entered reading
+      description: >
+        Updates value, timestamp, and context for a reading logged by the
+        authenticated patient. Doctor-entered and other patients' readings are
+        returned as not found.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [type, value1, unit, context, timestamp]
+                  properties:
+                    type:
+                      type: string
+                      enum: [glucose]
+                    value1:
+                      type: number
+                      exclusiveMinimum: 0
+                    unit:
+                      type: string
+                      enum: [mg/dL, mmol/L]
+                    context:
+                      type: string
+                      enum: [fasted, post_meal]
+                    timestamp:
+                      type: string
+                      format: date-time
+                - type: object
+                  required: [type, value1, value2, unit, context, timestamp]
+                  properties:
+                    type:
+                      type: string
+                      enum: [blood_pressure]
+                    value1:
+                      type: number
+                      exclusiveMinimum: 0
+                    value2:
+                      type: number
+                      exclusiveMinimum: 0
+                    unit:
+                      type: string
+                      enum: [mmHg]
+                    context:
+                      type: string
+                      enum: [morning, evening]
+                    timestamp:
+                      type: string
+                      format: date-time
+      responses:
+        "200":
+          description: Reading updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reading"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+    delete:
+      tags: [Readings]
+      summary: Delete a patient-entered reading
+      description: >
+        Permanently deletes a reading logged by the authenticated patient.
+        Doctor-entered and other patients' readings are returned as not found.
+      responses:
+        "204":
+          description: Reading deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /patients/{patientId}/readings:
     post:
       tags: [Readings]

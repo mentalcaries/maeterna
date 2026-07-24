@@ -1,6 +1,6 @@
 # Maeterna
 
-Maeterna is a maternal health monitoring app for pregnant women and their OB-GYN doctors in Trinidad & Tobago. Patients log glucose and blood pressure readings; doctors monitor their patients against configurable severity thresholds; admins manage accounts and doctor verification.
+Maeterna is a maternal health monitoring app for pregnant women and their OB-GYN doctors in Trinidad & Tobago. Patients log and correct their own glucose and blood pressure readings; doctors monitor their patients against configurable severity thresholds; admins manage accounts and doctor verification.
 
 ## Monorepo layout
 

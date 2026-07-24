@@ -57,7 +57,7 @@ function SelectContent({
 }: React.ComponentProps<typeof SelectPrimitive.Popup>) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner>
+      <SelectPrimitive.Positioner className="z-[60]">
         <SelectPrimitive.Popup
           className={cn(
             "z-50 max-h-60 min-w-[var(--anchor-width)] overflow-y-auto rounded-md border border-border bg-background py-1 shadow-md",

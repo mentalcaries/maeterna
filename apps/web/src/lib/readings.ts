@@ -1,4 +1,5 @@
 import type { components } from "@/lib/api.types"
+import { formatGlucose, type GlucoseUnit } from "@/lib/glucose"
 import type { Reading } from "@/mock/db"
 
 export function adaptReading(r: components["schemas"]["Reading"]): Reading {
@@ -45,4 +46,18 @@ export function readingContext(r: {
   if (r.timeOfDay) parts.push(TIME_LABELS[r.timeOfDay] ?? r.timeOfDay)
   if (parts.length === 0) parts.push(CONTEXT_LABELS[r.context] ?? r.context)
   return parts.join(" · ")
+}
+
+export function formatReadingValue(
+  reading: {
+    type: "glucose" | "blood_pressure"
+    value1: number
+    value2?: number | null
+  },
+  glucoseUnit: GlucoseUnit = "mg/dL"
+): string {
+  if (reading.type === "blood_pressure") {
+    return `${reading.value1}/${reading.value2 ?? "?"} mmHg`
+  }
+  return formatGlucose(reading.value1, glucoseUnit)
 }
