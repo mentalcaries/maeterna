@@ -14,7 +14,11 @@ import {
   DialogTitle,
 } from "@/components/dialog"
 import { RiCalendarLine, RiShieldLine, RiCalendar2Line } from "@remixicon/react"
-import { formatDueDate } from "@/lib/due-date"
+import {
+  computeGestationalAge,
+  formatDueDate,
+  formatGestationalAge,
+} from "@/lib/due-date"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
@@ -139,6 +143,10 @@ function PatientSettingsPage() {
     setDeleteOpen(open)
   }
 
+  const gestationalAge = profile?.dueDate
+    ? computeGestationalAge(profile.dueDate)
+    : null
+
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col gap-1 pt-4">
@@ -255,6 +263,14 @@ function PatientSettingsPage() {
                     <RiCalendar2Line className="size-4 shrink-0" />
                     {formatDueDate(profile.dueDate)}
                   </div>
+                  {gestationalAge && (
+                    <p className="text-xs text-muted-foreground">
+                      Gestational age:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatGestationalAge(gestationalAge)}
+                      </span>
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Set by your doctor. Contact them to make changes.
                   </p>

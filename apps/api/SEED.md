@@ -18,20 +18,22 @@ Source of truth for every value below is `seed/seed.sql` — if you change the s
 
 1. Start the API: `pnpm run dev` (`http://localhost:8787`, or the next free port if that one's taken).
 2. On the login page, request a magic link for any account email from the tables below.
-3. With `LOCAL_EMAIL_MODE=console` (the default in `.dev.vars.example`), the link prints straight to the `wrangler dev` terminal — copy it into your browser instead of checking an inbox:
+3. With `LOCAL_DEV_ONLY_SIGNAL=true` (set in `.dev.vars`), the link prints straight to the `wrangler dev` terminal — copy it into your browser instead of checking an inbox:
    ```
-   [magic link] doctor.verified@seed.test -> http://localhost:8787/api/auth/magic-link/verify?token=...
+   [magic link] doctor.hospital@seed.test -> http://localhost:8787/api/auth/magic-link/verify?token=...
    ```
 4. To test real delivery instead, set `LOCAL_EMAIL_MODE=send` in your own `.dev.vars` and use a real inbox you control as that account's email — a per-developer override, don't edit the checked-in seed emails.
 
 ## 3. Doctors
 
-| Name           | Email                         | Status                                                    | What it tests                                                                                                                             |
-| -------------- | ----------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Vera Verified  | `doctor.verified@seed.test`   | `active`, `doctor_profile.verified = true`                | Full dashboard access — has an active access grant to every seeded patient (A–E)                                                          |
-| Uma Unverified | `doctor.unverified@seed.test` | `pending_verification`, `doctor_profile.verified = false` | The verification gate — the web app's doctor route guard redirects this account straight to `/signup/doctor/pending`, no dashboard access |
+| Name          | Email                       | Status   | Affiliations                                            | What it tests                                                                    |
+| ------------- | --------------------------- | -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Vera Hospital | `doctor.hospital@seed.test` | `active` | Seed Test Hospital / Seed Test Department               | Full dashboard access — has an active access grant to every seeded patient (A–E) |
+| Uma Practice  | `doctor.practice@seed.test` | `active` | Westshore Medical (private practice)                    | Private-practice affiliation; no patient grants                                  |
+| Hank Hybrid   | `doctor.hybrid@seed.test`   | `active` | Seed Test Hospital (no dept) + Eastside Wellness Clinic | Mixed institution + practice affiliations; no patient grants                     |
+| Sam Solo      | `doctor.solo@seed.test`     | `active` | No affiliations                                         | Zero-affiliation edge case; no patient grants                                    |
 
-Both are affiliated with **Seed Test Hospital / Seed Test Department** (a fixed local institution/department, independent of the real Trinidad hospital data in `seed/institutions.sql`).
+All doctors are self-attested (`active` immediately on signup — no verification/pending flow exists). The verification gate and `pending_verification` status were removed; doctors go straight to the dashboard after completing their profile.
 
 ## 4. Patients
 
@@ -50,4 +52,4 @@ Each patient has roughly a month of dated readings (last ~30 days) built from a 
 - **Severity is never stored** — it's computed at read time (`computeSeverity()` in `src/lib/thresholds.ts`) against whichever threshold set applies, so re-seeding never leaves stale severity values.
 - **Timestamps assume AST (UTC-4, Trinidad & Tobago)** — hardcoded as a fixed +4h offset rather than computed dynamically, since SQLite's `'localtime'` modifier proved unreliable inside `wrangler d1 execute`'s multi-statement batching. If you're developing from a different timezone, the meal-slot columns still populate correctly relative to each other, just not at exactly 7am/8am/1pm/7pm local for you.
 - **Notes**: roughly half of all readings have a short note (e.g. "After breakfast", "Feeling good"), the rest are `NULL`, so both the add-note and edit-note UI states are exercised.
-- All doctor access to these patients comes from `seed-doctor-verified`'s access grants — the unverified doctor has none (and can't reach the dashboard to use them anyway).
+- All doctor access to these patients comes from Vera Hospital's (`doctor.hospital@seed.test`) access grants — the other three doctors have no patient grants.
