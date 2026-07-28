@@ -27,6 +27,7 @@ import { computeSeverity, resolveThresholds } from "../lib/thresholds"
 import { serializeReading } from "../lib/readings"
 import { doctorHasAccess } from "../lib/access"
 import { getDoctorDepartmentIds, mapAffiliation } from "../lib/affiliations"
+import { serializePatientAvatar } from "../lib/avatar"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
@@ -402,6 +403,13 @@ export function registerDoctorRoutes(app: AppRouter) {
           .limit(1)
           .get()
 
+        const avatar = await serializePatientAvatar({
+          env: c.env,
+          image: p.image,
+          avatarBackgroundColor: p.avatarBackgroundColor,
+          firstName: p.firstName,
+          lastName: p.lastName,
+        })
         return {
           patient: {
             id: p.id,
@@ -410,7 +418,7 @@ export function registerDoctorRoutes(app: AppRouter) {
             email: p.email,
             dateOfBirth: profile?.dateOfBirth ?? "",
             dueDate: profile?.dueDate ?? null,
-            avatarUrl: p.image,
+            ...avatar,
             role: "patient" as const,
             status: p.status as "active",
             createdAt: p.createdAt.toISOString(),
@@ -473,6 +481,13 @@ export function registerDoctorRoutes(app: AppRouter) {
         .orderBy(patientCondition.createdAt),
     ])
 
+    const avatar = await serializePatientAvatar({
+      env: c.env,
+      image: patientUser.image,
+      avatarBackgroundColor: patientUser.avatarBackgroundColor,
+      firstName: patientUser.firstName,
+      lastName: patientUser.lastName,
+    })
     return c.json({
       patient: {
         id: patientUser.id,
@@ -481,7 +496,7 @@ export function registerDoctorRoutes(app: AppRouter) {
         email: patientUser.email,
         dateOfBirth: profile?.dateOfBirth ?? "",
         dueDate: profile?.dueDate ?? null,
-        avatarUrl: patientUser.image,
+        ...avatar,
         role: "patient" as const,
         status: patientUser.status as "active",
         createdAt: patientUser.createdAt.toISOString(),

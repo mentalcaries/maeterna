@@ -22,17 +22,29 @@ import {
 } from "../schemas"
 import { raise } from "../lib/errors"
 import { mapAffiliation } from "../lib/affiliations"
+import { serializePatientAvatar } from "../lib/avatar"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function buildPatientResponse(db: DB, p: typeof userTable.$inferSelect) {
+async function buildPatientResponse(
+  db: DB,
+  env: CloudflareBindings,
+  p: typeof userTable.$inferSelect
+) {
   const profile = await db
     .select()
     .from(patientProfile)
     .where(eq(patientProfile.userId, p.id))
     .get()
+  const avatar = await serializePatientAvatar({
+    env,
+    image: p.image,
+    avatarBackgroundColor: p.avatarBackgroundColor,
+    firstName: p.firstName,
+    lastName: p.lastName,
+  })
   return {
     id: p.id,
     firstName: p.firstName ?? "",
@@ -40,7 +52,7 @@ async function buildPatientResponse(db: DB, p: typeof userTable.$inferSelect) {
     email: p.email,
     dateOfBirth: profile?.dateOfBirth ?? "",
     dueDate: profile?.dueDate ?? null,
-    avatarUrl: p.image,
+    ...avatar,
     role: "patient" as const,
     status: p.status as "active" | "suspended",
     createdAt: p.createdAt.toISOString(),
@@ -229,7 +241,7 @@ export function registerAdminRoutes(app: AppRouter) {
     const data = await Promise.all(
       page.map((u) =>
         u.role === "patient"
-          ? buildPatientResponse(db, u)
+          ? buildPatientResponse(db, c.env, u)
           : buildDoctorResponse(db, u)
       )
     )
@@ -271,7 +283,7 @@ export function registerAdminRoutes(app: AppRouter) {
       .get()
     const response =
       updated!.role === "patient"
-        ? await buildPatientResponse(db, updated!)
+        ? await buildPatientResponse(db, c.env, updated!)
         : await buildDoctorResponse(db, updated!)
 
     return c.json(response)

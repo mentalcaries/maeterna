@@ -21,6 +21,7 @@ import {
 } from "../schemas"
 import { raise, isUniqueConstraintError } from "../lib/errors"
 import { mapAffiliation } from "../lib/affiliations"
+import { serializePatientAvatar } from "../lib/avatar"
 import type { AppRouter } from "../types"
 
 const completeProfileRoute = createRoute({
@@ -220,6 +221,13 @@ export function registerProfileRoutes(app: AppRouter) {
         .where(eq(patientProfile.userId, currentUser.id))
         .get()
 
+      const avatar = await serializePatientAvatar({
+        env: c.env,
+        image: updated!.image,
+        avatarBackgroundColor: updated!.avatarBackgroundColor,
+        firstName: updated!.firstName,
+        lastName: updated!.lastName,
+      })
       return c.json({
         id: updated!.id,
         firstName: updated!.firstName ?? "",
@@ -227,7 +235,7 @@ export function registerProfileRoutes(app: AppRouter) {
         email: updated!.email,
         dateOfBirth: profile?.dateOfBirth ?? "",
         dueDate: profile?.dueDate ?? null,
-        avatarUrl: updated!.image,
+        ...avatar,
         role: updated!.role as "patient",
         status: updated!.status as "active",
         createdAt: updated!.createdAt.toISOString(),

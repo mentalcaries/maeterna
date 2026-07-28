@@ -2,6 +2,7 @@ import { createRoute, z } from "@hono/zod-openapi"
 import { eq } from "drizzle-orm"
 import { createDb } from "../db"
 import { user as userTable, patientProfile } from "../db/schema"
+import { serializePatientAvatar } from "../lib/avatar"
 import { sessionMiddleware, requireRole } from "../middleware/session"
 import { PatientSchema, responses } from "../schemas"
 import type { AppRouter } from "../types"
@@ -66,11 +67,21 @@ export function registerPatientRoutes(app: AppRouter) {
   app.openapi(getMeRoute, async (c) => {
     const u = c.get("user")
     const db = createDb(c.env.DB)
-    const profile = await db
-      .select()
-      .from(patientProfile)
-      .where(eq(patientProfile.userId, u.id))
-      .get()
+    const [profile, row] = await Promise.all([
+      db
+        .select()
+        .from(patientProfile)
+        .where(eq(patientProfile.userId, u.id))
+        .get(),
+      db.select().from(userTable).where(eq(userTable.id, u.id)).get(),
+    ])
+    const avatar = await serializePatientAvatar({
+      env: c.env,
+      image: row?.image ?? null,
+      avatarBackgroundColor: row?.avatarBackgroundColor ?? null,
+      firstName: u.firstName,
+      lastName: u.lastName,
+    })
     return c.json({
       id: u.id,
       firstName: u.firstName ?? "",
@@ -78,7 +89,7 @@ export function registerPatientRoutes(app: AppRouter) {
       email: u.email,
       dateOfBirth: profile?.dateOfBirth ?? "",
       dueDate: profile?.dueDate ?? null,
-      avatarUrl: u.image,
+      ...avatar,
       role: "patient" as const,
       status: u.status,
       createdAt: u.createdAt.toISOString(),
@@ -120,6 +131,13 @@ export function registerPatientRoutes(app: AppRouter) {
       .where(eq(patientProfile.userId, u.id))
       .get()
 
+    const avatar = await serializePatientAvatar({
+      env: c.env,
+      image: updated!.image,
+      avatarBackgroundColor: updated!.avatarBackgroundColor,
+      firstName: updated!.firstName,
+      lastName: updated!.lastName,
+    })
     return c.json({
       id: updated!.id,
       firstName: updated!.firstName ?? "",
@@ -127,7 +145,7 @@ export function registerPatientRoutes(app: AppRouter) {
       email: updated!.email,
       dateOfBirth: profile?.dateOfBirth ?? "",
       dueDate: profile?.dueDate ?? null,
-      avatarUrl: updated!.image,
+      ...avatar,
       role: "patient" as const,
       status: updated!.status as "active",
       createdAt: updated!.createdAt.toISOString(),

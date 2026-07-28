@@ -1,6 +1,8 @@
 import { z } from "@hono/zod-openapi"
+import { AVATAR_PALETTE } from "../lib/avatar"
 
 export const RoleSchema = z.enum(["patient", "doctor", "admin"])
+export const AvatarPaletteSchema = z.enum(AVATAR_PALETTE)
 export const UserStatusSchema = z.enum(["active", "suspended"])
 export const ReadingTypeSchema = z.enum(["glucose", "blood_pressure"])
 export const SeveritySchema = z.enum(["normal", "high"])
@@ -68,6 +70,8 @@ export const PatientSchema = z
     dateOfBirth: z.string(),
     dueDate: z.string().nullable(),
     avatarUrl: z.string().nullable(),
+    avatarBackgroundColor: AvatarPaletteSchema.nullable(),
+    initials: z.string(),
     role: RoleSchema,
     status: UserStatusSchema,
     createdAt: z.string().datetime(),
