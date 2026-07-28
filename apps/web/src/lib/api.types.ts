@@ -2622,6 +2622,17 @@ export interface components {
       dateOfBirth: string
       dueDate: string | null
       avatarUrl: string | null
+      /** @enum {string|null} */
+      avatarBackgroundColor:
+        | "coral"
+        | "sage"
+        | "sky"
+        | "lavender"
+        | "sand"
+        | "clay"
+        | "mint"
+        | null
+      initials: string
       /** @enum {string} */
       role: "patient" | "doctor" | "admin"
       /** @enum {string} */
