@@ -13,7 +13,14 @@
       "migrations_dir": "drizzle/migrations",
     },
   ],
+  "r2_buckets": [
+    {
+      "binding": "AVATARS",
+      "bucket_name": "maeterna-avatars",
+    },
+  ],
   "vars": {
     "SUPER_ADMIN_EMAIL": "devjaggernauth@gmail.com",
+    "R2_AVATARS_PUBLIC_BUCKET": "maeterna-avatars",
   },
 }

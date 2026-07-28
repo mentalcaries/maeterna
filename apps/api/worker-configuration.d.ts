@@ -2,6 +2,7 @@
 // Secrets (set via `wrangler secret put`) are manually typed here.
 interface CloudflareBindings {
   DB: D1Database
+  AVATARS: R2Bucket
   BETTER_AUTH_SECRET: string
   BETTER_AUTH_URL: string
   GOOGLE_CLIENT_ID: string
@@ -10,6 +11,10 @@ interface CloudflareBindings {
   RESEND_API_KEY: string
   RESEND_FROM_EMAIL: string
   SUPER_ADMIN_EMAIL: string
+  R2_AVATARS_PUBLIC_BUCKET: string
+  R2_ACCOUNT_ID: string
+  R2_ACCESS_KEY_ID: string
+  R2_SECRET_ACCESS_KEY: string
   // Local dev only — set in .dev.vars, never in production. See src/lib/auth.ts.
   LOCAL_DEV_ONLY_SIGNAL?: string
   LOCAL_EMAIL_MODE?: string
