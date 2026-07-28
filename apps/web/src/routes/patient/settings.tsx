@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { AvatarEditor } from "@/components/AvatarEditor"
 import { Button } from "@/components/button"
 import { Input } from "@/components/input"
 import { Label } from "@/components/label"
@@ -169,6 +170,11 @@ function PatientSettingsPage() {
               onSubmit={handleProfileSubmit}
               className="flex flex-col gap-4"
             >
+              <AvatarEditor
+                avatarUrl={profile?.avatarUrl ?? null}
+                initials={profile?.initials ?? "?"}
+                backgroundColor={profile?.avatarBackgroundColor ?? null}
+              />
               <div className="flex gap-3">
                 <div className="flex flex-1 flex-col gap-1.5">
                   <Label
