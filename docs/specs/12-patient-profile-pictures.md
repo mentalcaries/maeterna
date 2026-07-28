@@ -52,6 +52,24 @@ private R2 bucket and access is via short-lived signed URLs.
 Presigning is handled by `aws4fetch` against R2's S3 API; the R2 binding
 itself is used only for HEAD and DELETE operations.
 
+Object keys with slashes must be encoded per-segment (not with a plain
+`encodeURIComponent(key)`). S3 canonicalisation treats `%2F` and `/` as
+different characters, so encoding the whole key breaks the SigV4 signature.
+See `apps/api/src/lib/r2-presign.test.ts` for regression coverage.
+
+### Local dev secrets
+
+Add three keys to `apps/api/.dev.vars` so `wrangler dev` can presign against
+the R2 S3 endpoint. In production, set them via `wrangler secret put`.
+
+```
+R2_ACCOUNT_ID=<Cloudflare account id>
+R2_ACCESS_KEY_ID=<R2 API token access key>
+R2_SECRET_ACCESS_KEY=<R2 API token secret>
+```
+
+Create the bucket once with `wrangler r2 bucket create maeterna-avatars`.
+
 ### Web
 
 - `<Avatar>` — shared component; renders the image if present, else a coloured

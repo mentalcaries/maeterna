@@ -11,8 +11,15 @@ export type R2Credentials = {
   bucket: string
 }
 
+function encodeObjectKey(key: string): string {
+  // Percent-encode each path segment individually. Encoding the whole key
+  // would turn "/" into "%2F", and S3's canonicalisation treats those as
+  // different characters — the signature would not match.
+  return key.split("/").map(encodeURIComponent).join("/")
+}
+
 function getEndpoint(creds: R2Credentials, key: string): string {
-  return `https://${creds.accountId}.r2.cloudflarestorage.com/${creds.bucket}/${encodeURIComponent(key)}`
+  return `https://${creds.accountId}.r2.cloudflarestorage.com/${creds.bucket}/${encodeObjectKey(key)}`
 }
 
 function getClient(creds: R2Credentials): AwsClient {
