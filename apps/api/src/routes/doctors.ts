@@ -28,6 +28,7 @@ import { serializeReading } from "../lib/readings"
 import { doctorHasAccess } from "../lib/access"
 import { getDoctorDepartmentIds, mapAffiliation } from "../lib/affiliations"
 import { serializePatientAvatar } from "../lib/avatar"
+import { createR2Presigner } from "../lib/r2-presign"
 import { raise } from "../lib/errors"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
@@ -365,6 +366,9 @@ export function registerDoctorRoutes(app: AppRouter) {
     const lastViewedAtByPatient = new Map(
       lastViews.map(({ patientId, lastViewedAt }) => [patientId, lastViewedAt])
     )
+    // One presigner (creds + AwsClient) shared across every patient in this
+    // list — otherwise a large roster would rebuild both per row.
+    const presigner = createR2Presigner(c.env)
 
     const results = await Promise.all(
       patients.map(async (p) => {
@@ -404,7 +408,7 @@ export function registerDoctorRoutes(app: AppRouter) {
           .get()
 
         const avatar = await serializePatientAvatar({
-          env: c.env,
+          presigner,
           avatarObjectKey: p.avatarObjectKey,
           avatarBackgroundColor: p.avatarBackgroundColor,
           firstName: p.firstName,
@@ -482,7 +486,7 @@ export function registerDoctorRoutes(app: AppRouter) {
     ])
 
     const avatar = await serializePatientAvatar({
-      env: c.env,
+      presigner: createR2Presigner(c.env),
       avatarObjectKey: patientUser.avatarObjectKey,
       avatarBackgroundColor: patientUser.avatarBackgroundColor,
       firstName: patientUser.firstName,

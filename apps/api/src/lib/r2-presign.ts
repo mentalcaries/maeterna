@@ -86,3 +86,44 @@ export function readR2Creds(
   }
   return { accountId, accessKeyId, secretAccessKey, bucket }
 }
+
+// Reusable presigner that reads creds and instantiates AwsClient once per
+// request. Callers that presign one key can build it inline; list handlers
+// should hoist it above their loop so N patients share one client.
+export type R2Presigner = {
+  presignGet: (key: string, expiresInSeconds: number) => Promise<string>
+  presignPut: (
+    key: string,
+    contentType: string,
+    expiresInSeconds: number
+  ) => Promise<string>
+}
+
+export function createR2Presigner(env: CloudflareBindings): R2Presigner {
+  const creds = readR2Creds(
+    env as unknown as Record<string, string | undefined>,
+    env.R2_AVATARS_PUBLIC_BUCKET
+  )
+  const client = getClient(creds)
+
+  async function signQuery(
+    key: string,
+    method: "GET" | "PUT",
+    expiresInSeconds: number,
+    headers?: Record<string, string>
+  ): Promise<string> {
+    const url = new URL(getEndpoint(creds, key))
+    url.searchParams.set("X-Amz-Expires", String(expiresInSeconds))
+    const signed = await client.sign(
+      new Request(url.toString(), { method, headers }),
+      { aws: { signQuery: true } }
+    )
+    return signed.url
+  }
+
+  return {
+    presignGet: (key, ttl) => signQuery(key, "GET", ttl),
+    presignPut: (key, contentType, ttl) =>
+      signQuery(key, "PUT", ttl, { "content-type": contentType }),
+  }
+}

@@ -23,6 +23,7 @@ import {
 import { raise } from "../lib/errors"
 import { mapAffiliation } from "../lib/affiliations"
 import { serializePatientAvatar } from "../lib/avatar"
+import { createR2Presigner, type R2Presigner } from "../lib/r2-presign"
 import type { AppRouter } from "../types"
 import type { DB } from "../db"
 
@@ -30,7 +31,7 @@ import type { DB } from "../db"
 
 async function buildPatientResponse(
   db: DB,
-  env: CloudflareBindings,
+  presigner: R2Presigner,
   p: typeof userTable.$inferSelect
 ) {
   const profile = await db
@@ -39,7 +40,7 @@ async function buildPatientResponse(
     .where(eq(patientProfile.userId, p.id))
     .get()
   const avatar = await serializePatientAvatar({
-    env,
+    presigner,
     avatarObjectKey: p.avatarObjectKey,
     avatarBackgroundColor: p.avatarBackgroundColor,
     firstName: p.firstName,
@@ -237,11 +238,12 @@ export function registerAdminRoutes(app: AppRouter) {
     const allUsers = await q
     const total = allUsers.length
     const page = allUsers.slice(offset, offset + limit)
+    const presigner = createR2Presigner(c.env)
 
     const data = await Promise.all(
       page.map((u) =>
         u.role === "patient"
-          ? buildPatientResponse(db, c.env, u)
+          ? buildPatientResponse(db, presigner, u)
           : buildDoctorResponse(db, u)
       )
     )
@@ -283,7 +285,7 @@ export function registerAdminRoutes(app: AppRouter) {
       .get()
     const response =
       updated!.role === "patient"
-        ? await buildPatientResponse(db, c.env, updated!)
+        ? await buildPatientResponse(db, createR2Presigner(c.env), updated!)
         : await buildDoctorResponse(db, updated!)
 
     return c.json(response)

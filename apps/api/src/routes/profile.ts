@@ -22,6 +22,7 @@ import {
 import { raise, isUniqueConstraintError } from "../lib/errors"
 import { mapAffiliation } from "../lib/affiliations"
 import { serializePatientAvatar } from "../lib/avatar"
+import { createR2Presigner } from "../lib/r2-presign"
 import type { AppRouter } from "../types"
 
 const completeProfileRoute = createRoute({
@@ -222,7 +223,7 @@ export function registerProfileRoutes(app: AppRouter) {
         .get()
 
       const avatar = await serializePatientAvatar({
-        env: c.env,
+        presigner: createR2Presigner(c.env),
         avatarObjectKey: updated!.avatarObjectKey,
         avatarBackgroundColor: updated!.avatarBackgroundColor,
         firstName: updated!.firstName,

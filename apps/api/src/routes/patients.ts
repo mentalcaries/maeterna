@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { createDb } from "../db"
 import { user as userTable, patientProfile } from "../db/schema"
 import { serializePatientAvatar } from "../lib/avatar"
+import { createR2Presigner } from "../lib/r2-presign"
 import { sessionMiddleware, requireRole } from "../middleware/session"
 import { PatientSchema, responses } from "../schemas"
 import type { AppRouter } from "../types"
@@ -76,7 +77,7 @@ export function registerPatientRoutes(app: AppRouter) {
       db.select().from(userTable).where(eq(userTable.id, u.id)).get(),
     ])
     const avatar = await serializePatientAvatar({
-      env: c.env,
+      presigner: createR2Presigner(c.env),
       avatarObjectKey: row?.avatarObjectKey ?? null,
       avatarBackgroundColor: row?.avatarBackgroundColor ?? null,
       firstName: u.firstName,
@@ -132,7 +133,7 @@ export function registerPatientRoutes(app: AppRouter) {
       .get()
 
     const avatar = await serializePatientAvatar({
-      env: c.env,
+      presigner: createR2Presigner(c.env),
       avatarObjectKey: updated!.avatarObjectKey,
       avatarBackgroundColor: updated!.avatarBackgroundColor,
       firstName: updated!.firstName,

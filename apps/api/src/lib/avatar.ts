@@ -1,4 +1,4 @@
-import { presignGet, readR2Creds } from "./r2-presign"
+import type { R2Presigner } from "./r2-presign"
 
 // Fixed palette shared with the web app (see apps/web/src/lib/avatar-palette.ts).
 // Any change here MUST be mirrored there — the API validates the slug and the
@@ -34,9 +34,11 @@ export function computeInitials(
 const AVATAR_URL_TTL_SECONDS = 60 * 60
 
 // Given the raw user row fields, return the three avatar-related fields the
-// PatientSchema exposes. `avatarObjectKey` is an R2 key, not a URL.
+// PatientSchema exposes. `avatarObjectKey` is an R2 key, not a URL. The
+// caller owns the presigner lifecycle — for list handlers, build it once
+// above the loop so patients share a single AwsClient.
 export async function serializePatientAvatar(input: {
-  env: CloudflareBindings
+  presigner: R2Presigner
   avatarObjectKey: string | null
   avatarBackgroundColor: string | null
   firstName: string | null
@@ -55,12 +57,7 @@ export async function serializePatientAvatar(input: {
     return { avatarUrl: null, avatarBackgroundColor: bg, initials }
   }
 
-  const creds = readR2Creds(
-    input.env as unknown as Record<string, string | undefined>,
-    input.env.R2_AVATARS_PUBLIC_BUCKET
-  )
-  const avatarUrl = await presignGet(
-    creds,
+  const avatarUrl = await input.presigner.presignGet(
     input.avatarObjectKey,
     AVATAR_URL_TTL_SECONDS
   )
