@@ -16,6 +16,8 @@ export const user = sqliteTable("user", {
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),
+  // R2 object key (not a URL) for the profile picture; API returns a signed
+  // GET URL derived from this in PatientSchema.avatarUrl.
   image: text("image"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
@@ -29,6 +31,8 @@ export const user = sqliteTable("user", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp" }),
+  // Palette slug for the initials-fallback avatar background (nullable).
+  avatarBackgroundColor: text("avatar_background_color"),
 })
 
 export const session = sqliteTable("session", {
