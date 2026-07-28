@@ -46,30 +46,38 @@ export function Avatar({
   )
 
   if (showImage) {
-    return (
+    const imgClass = cn(shared, "bg-muted p-0")
+    const inner = (
+      <img
+        src={url as string}
+        alt={alt ?? ""}
+        className="size-full object-cover"
+        onError={() => setFailed(true)}
+        draggable={false}
+      />
+    )
+    return onClick ? (
       <button
-        type={onClick ? "button" : undefined}
+        type="button"
         onClick={onClick}
         aria-label={alt ?? "Profile picture"}
-        className={cn(shared, "bg-muted p-0")}
+        className={imgClass}
       >
-        <img
-          src={url as string}
-          alt={alt ?? ""}
-          className="size-full object-cover"
-          onError={() => setFailed(true)}
-          draggable={false}
-        />
+        {inner}
       </button>
+    ) : (
+      <span className={imgClass} aria-label={alt ?? "Profile picture"}>
+        {inner}
+      </span>
     )
   }
 
   const style = {
     backgroundColor: avatarBackgroundCss(backgroundColor ?? null),
   }
-  return (
+  return onClick ? (
     <button
-      type={onClick ? "button" : undefined}
+      type="button"
       onClick={onClick}
       aria-label={alt ?? "Profile initials"}
       className={shared}
@@ -77,5 +85,13 @@ export function Avatar({
     >
       {initials}
     </button>
+  ) : (
+    <span
+      aria-label={alt ?? "Profile initials"}
+      className={shared}
+      style={style}
+    >
+      {initials}
+    </span>
   )
 }

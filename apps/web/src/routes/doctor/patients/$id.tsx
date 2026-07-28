@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { Avatar } from "@/components/avatar"
+import { AvatarLightbox } from "@/components/AvatarLightbox"
 import { Button } from "@/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/card"
 import { Badge, badgeVariants } from "@/components/badge"
@@ -137,6 +139,7 @@ function PatientDetailPage() {
   const [logOpen, setLogOpen] = useState(false)
   const [thresholdOpen, setThresholdOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [avatarLightboxOpen, setAvatarLightboxOpen] = useState(false)
   const [displayUnit, setDisplayUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
   const [range, setRange] = useState<TimeRange>("month")
   const [activeTab, setActiveTab] = useState<"glucose" | "bp">("glucose")
@@ -358,6 +361,18 @@ function PatientDetailPage() {
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
+            <Avatar
+              url={patient.avatarUrl}
+              initials={patient.initials}
+              backgroundColor={patient.avatarBackgroundColor}
+              size="md"
+              alt={`${patientName} profile picture`}
+              onClick={
+                patient.avatarUrl
+                  ? () => setAvatarLightboxOpen(true)
+                  : undefined
+              }
+            />
             <h1 className="text-2xl font-semibold">{patientName}</h1>
             {patient.status === "suspended" && (
               <Badge variant="destructive">Suspended</Badge>
@@ -880,6 +895,15 @@ function PatientDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {patient.avatarUrl && (
+        <AvatarLightbox
+          open={avatarLightboxOpen}
+          onOpenChange={setAvatarLightboxOpen}
+          imageUrl={patient.avatarUrl}
+          alt={`${patientName} profile picture`}
+        />
+      )}
     </div>
   )
 }

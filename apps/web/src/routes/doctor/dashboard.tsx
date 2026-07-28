@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
+import { Avatar } from "@/components/avatar"
 import { Card, CardContent } from "@/components/card"
 import { Badge } from "@/components/badge"
 import { Button } from "@/components/button"
@@ -148,20 +149,29 @@ function DoctorDashboardPage() {
                 >
                   <Card className="transition-colors hover:bg-muted/30">
                     <CardContent className="flex items-center justify-between gap-4 p-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {patient.firstName} {patient.lastName}
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          url={patient.avatarUrl}
+                          initials={patient.initials}
+                          backgroundColor={patient.avatarBackgroundColor}
+                          size="sm"
+                          alt={`${patient.firstName} ${patient.lastName}`}
+                        />
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {patient.firstName} {patient.lastName}
+                            </span>
+                            {patient.status === "suspended" && (
+                              <Badge variant="destructive">Suspended</Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {lastReadingAt
+                              ? `Last reading: ${new Date(lastReadingAt).toLocaleDateString("en-TT", { month: "short", day: "numeric" })}`
+                              : "No readings yet"}
                           </span>
-                          {patient.status === "suspended" && (
-                            <Badge variant="destructive">Suspended</Badge>
-                          )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {lastReadingAt
-                            ? `Last reading: ${new Date(lastReadingAt).toLocaleDateString("en-TT", { month: "short", day: "numeric" })}`
-                            : "No readings yet"}
-                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         {unreadAlertCount > 0 && (
