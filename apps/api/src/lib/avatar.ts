@@ -34,10 +34,10 @@ export function computeInitials(
 const AVATAR_URL_TTL_SECONDS = 60 * 60
 
 // Given the raw user row fields, return the three avatar-related fields the
-// PatientSchema exposes. `image` is the R2 object key, not a URL.
+// PatientSchema exposes. `avatarObjectKey` is an R2 key, not a URL.
 export async function serializePatientAvatar(input: {
   env: CloudflareBindings
-  image: string | null
+  avatarObjectKey: string | null
   avatarBackgroundColor: string | null
   firstName: string | null
   lastName: string | null
@@ -51,7 +51,7 @@ export async function serializePatientAvatar(input: {
     ? input.avatarBackgroundColor
     : null
 
-  if (!input.image) {
+  if (!input.avatarObjectKey) {
     return { avatarUrl: null, avatarBackgroundColor: bg, initials }
   }
 
@@ -59,6 +59,10 @@ export async function serializePatientAvatar(input: {
     input.env as unknown as Record<string, string | undefined>,
     input.env.R2_AVATARS_PUBLIC_BUCKET
   )
-  const avatarUrl = await presignGet(creds, input.image, AVATAR_URL_TTL_SECONDS)
+  const avatarUrl = await presignGet(
+    creds,
+    input.avatarObjectKey,
+    AVATAR_URL_TTL_SECONDS
+  )
   return { avatarUrl, avatarBackgroundColor: bg, initials }
 }

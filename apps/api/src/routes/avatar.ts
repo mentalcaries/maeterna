@@ -144,16 +144,16 @@ export function registerAvatarRoutes(app: AppRouter) {
 
     const db = createDb(c.env.DB)
     const previous = await db
-      .select({ image: userTable.image })
+      .select({ avatarObjectKey: userTable.avatarObjectKey })
       .from(userTable)
       .where(eq(userTable.id, u.id))
       .get()
     await db
       .update(userTable)
-      .set({ image: objectKey, updatedAt: new Date() })
+      .set({ avatarObjectKey: objectKey, updatedAt: new Date() })
       .where(eq(userTable.id, u.id))
-    if (previous?.image && previous.image !== objectKey) {
-      await c.env.AVATARS.delete(previous.image)
+    if (previous?.avatarObjectKey && previous.avatarObjectKey !== objectKey) {
+      await c.env.AVATARS.delete(previous.avatarObjectKey)
     }
     return new Response(null, { status: 204 }) as never
   })
@@ -162,15 +162,15 @@ export function registerAvatarRoutes(app: AppRouter) {
     const u = c.get("user")
     const db = createDb(c.env.DB)
     const row = await db
-      .select({ image: userTable.image })
+      .select({ avatarObjectKey: userTable.avatarObjectKey })
       .from(userTable)
       .where(eq(userTable.id, u.id))
       .get()
     await db
       .update(userTable)
-      .set({ image: null, updatedAt: new Date() })
+      .set({ avatarObjectKey: null, updatedAt: new Date() })
       .where(eq(userTable.id, u.id))
-    if (row?.image) await c.env.AVATARS.delete(row.image)
+    if (row?.avatarObjectKey) await c.env.AVATARS.delete(row.avatarObjectKey)
     return new Response(null, { status: 204 }) as never
   })
 

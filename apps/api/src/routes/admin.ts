@@ -40,7 +40,7 @@ async function buildPatientResponse(
     .get()
   const avatar = await serializePatientAvatar({
     env,
-    image: p.image,
+    avatarObjectKey: p.avatarObjectKey,
     avatarBackgroundColor: p.avatarBackgroundColor,
     firstName: p.firstName,
     lastName: p.lastName,

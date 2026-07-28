@@ -16,8 +16,9 @@ export const user = sqliteTable("user", {
   emailVerified: integer("email_verified", { mode: "boolean" })
     .notNull()
     .default(false),
-  // R2 object key (not a URL) for the profile picture; API returns a signed
-  // GET URL derived from this in PatientSchema.avatarUrl.
+  // Better Auth writes this from OAuth profile pictures. We do NOT read it
+  // for our own avatar feature (see avatarObjectKey below) so an OAuth-derived
+  // URL here won't collide with our R2-based flow.
   image: text("image"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
@@ -33,6 +34,10 @@ export const user = sqliteTable("user", {
   termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp" }),
   // Palette slug for the initials-fallback avatar background (nullable).
   avatarBackgroundColor: text("avatar_background_color"),
+  // R2 object key for the patient's uploaded profile picture. Separate from
+  // user.image so Better Auth's OAuth profile-picture write path cannot
+  // corrupt our avatar reference.
+  avatarObjectKey: text("avatar_object_key"),
 })
 
 export const session = sqliteTable("session", {

@@ -223,7 +223,7 @@ export function registerProfileRoutes(app: AppRouter) {
 
       const avatar = await serializePatientAvatar({
         env: c.env,
-        image: updated!.image,
+        avatarObjectKey: updated!.avatarObjectKey,
         avatarBackgroundColor: updated!.avatarBackgroundColor,
         firstName: updated!.firstName,
         lastName: updated!.lastName,

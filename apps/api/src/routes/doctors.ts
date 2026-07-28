@@ -405,7 +405,7 @@ export function registerDoctorRoutes(app: AppRouter) {
 
         const avatar = await serializePatientAvatar({
           env: c.env,
-          image: p.image,
+          avatarObjectKey: p.avatarObjectKey,
           avatarBackgroundColor: p.avatarBackgroundColor,
           firstName: p.firstName,
           lastName: p.lastName,
@@ -483,7 +483,7 @@ export function registerDoctorRoutes(app: AppRouter) {
 
     const avatar = await serializePatientAvatar({
       env: c.env,
-      image: patientUser.image,
+      avatarObjectKey: patientUser.avatarObjectKey,
       avatarBackgroundColor: patientUser.avatarBackgroundColor,
       firstName: patientUser.firstName,
       lastName: patientUser.lastName,
