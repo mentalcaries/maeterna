@@ -49,6 +49,16 @@ export function serializeReading(
     unit: r.unit,
     context: r.context as "fasted" | "post_meal" | "morning" | "evening",
     notes: r.notes ?? null,
+    readingDate: r.readingDate ?? null,
+    slot:
+      (r.slot as
+        | "fasted"
+        | "post_breakfast"
+        | "post_lunch"
+        | "post_dinner"
+        | "morning"
+        | "evening"
+        | null) ?? null,
     timestamp: r.timestamp.toISOString(),
     severity: computeSeverity(
       r.type as "glucose" | "blood_pressure",

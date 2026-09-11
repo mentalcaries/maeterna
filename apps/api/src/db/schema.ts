@@ -134,25 +134,44 @@ export const doctorAffiliation = sqliteTable(
   ]
 )
 
-export const reading = sqliteTable("reading", {
-  id: text("id").primaryKey(),
-  patientId: text("patient_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  loggedById: text("logged_by_id")
-    .notNull()
-    .references(() => user.id),
-  type: text("type", { enum: ["glucose", "blood_pressure"] }).notNull(),
-  value1: real("value1").notNull(),
-  value2: real("value2"),
-  unit: text("unit").notNull(),
-  context: text("context", {
-    enum: ["fasted", "post_meal", "morning", "evening"],
-  }).notNull(),
-  notes: text("notes"),
-  timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-})
+export const reading = sqliteTable(
+  "reading",
+  {
+    id: text("id").primaryKey(),
+    patientId: text("patient_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    loggedById: text("logged_by_id")
+      .notNull()
+      .references(() => user.id),
+    type: text("type", { enum: ["glucose", "blood_pressure"] }).notNull(),
+    value1: real("value1").notNull(),
+    value2: real("value2"),
+    unit: text("unit").notNull(),
+    context: text("context", {
+      enum: ["fasted", "post_meal", "morning", "evening"],
+    }).notNull(),
+    notes: text("notes"),
+    readingDate: text("reading_date"),
+    slot: text("slot", {
+      enum: [
+        "fasted",
+        "post_breakfast",
+        "post_lunch",
+        "post_dinner",
+        "morning",
+        "evening",
+      ],
+    }),
+    timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("reading_daily_slot_unique_idx")
+      .on(t.patientId, t.loggedById, t.type, t.readingDate, t.slot)
+      .where(sql`${t.readingDate} is not null and ${t.slot} is not null`),
+  ]
+)
 
 export const threshold = sqliteTable("threshold", {
   id: text("id").primaryKey(),

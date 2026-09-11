@@ -27,7 +27,9 @@ export function Calendar({
           "flex h-9 w-9 items-center justify-center text-xs font-normal text-muted-foreground",
         weeks: "flex flex-col gap-1 mt-1",
         week: "flex",
-        day: "relative p-0 text-center",
+        // Every week is a flex row, so blank leading/trailing days need the
+        // same dimensions as numbered days to keep weekday columns aligned.
+        day: "relative h-9 w-9 shrink-0 p-0 text-center",
         day_button:
           "h-9 w-9 rounded-md text-sm font-normal hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         selected:

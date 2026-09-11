@@ -28,7 +28,9 @@ src/components/       Shared app components (readings forms/lists, charts)
 
 Each portal's top-level `route.tsx` is an auth guard: it checks the session on mount and redirects to that role's `/login` if missing or mismatched.
 
-Patient-entered readings can be corrected or deleted from Reading history.
+Patient-entered readings can be entered in the daily Log worksheet, corrected,
+or deleted. The worksheet supports today and earlier dates, uses the existing
+calendar popover for date jumps, and saves individual slots automatically.
 The dashboard remains read-only, and readings entered by a doctor do not expose
 patient edit or delete controls. These mutations use the generated PATCH and
 DELETE methods for `/patients/me/readings/{readingId}` and invalidate the shared

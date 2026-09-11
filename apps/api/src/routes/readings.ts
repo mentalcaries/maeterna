@@ -28,6 +28,13 @@ const glucoseBodySchema = z.object({
   unit: z.enum(["mg/dL", "mmol/L"]),
   context: z.enum(["fasted", "post_meal"]),
   notes: z.string().nullable().optional(),
+  readingDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  slot: z
+    .enum(["fasted", "post_breakfast", "post_lunch", "post_dinner"])
+    .optional(),
   timestamp: z.string().datetime(),
 })
 
@@ -38,6 +45,11 @@ const bpBodySchema = z.object({
   unit: z.literal("mmHg"),
   context: z.enum(["morning", "evening"]),
   notes: z.string().nullable().optional(),
+  readingDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  slot: z.enum(["morning", "evening"]).optional(),
   timestamp: z.string().datetime(),
 })
 
@@ -236,6 +248,8 @@ export function registerReadingRoutes(app: AppRouter) {
       ...canonicalReadingValues(body),
       context: body.context,
       notes: body.notes ?? null,
+      readingDate: body.readingDate ?? null,
+      slot: body.slot ?? null,
       timestamp: new Date(body.timestamp),
       createdAt: now,
     }
@@ -264,6 +278,8 @@ export function registerReadingRoutes(app: AppRouter) {
         .set({
           ...canonicalReadingValues(body),
           context: body.context,
+          readingDate: body.readingDate ?? existing.readingDate,
+          slot: body.slot ?? existing.slot,
           timestamp: new Date(body.timestamp),
         })
         .where(ownership)
@@ -310,6 +326,8 @@ export function registerReadingRoutes(app: AppRouter) {
       ...canonicalReadingValues(body),
       context: body.context,
       notes: body.notes ?? null,
+      readingDate: body.readingDate ?? null,
+      slot: body.slot ?? null,
       timestamp: new Date(body.timestamp),
       createdAt: new Date(),
     }
