@@ -35,6 +35,8 @@ function PatientLayout() {
     const user = getAppUser(sessionData)
     if (!user || user.role !== "patient") {
       void navigate({ to: "/" })
+    } else if (!user.firstName?.trim() || !user.lastName?.trim()) {
+      void navigate({ to: "/signup/patient" })
     }
   }, [sessionData, isPending, navigate, isLoginPage])
 
@@ -42,7 +44,13 @@ function PatientLayout() {
   if (isPending) return null
 
   const user = getAppUser(sessionData)
-  if (!user || user.role !== "patient") return null
+  if (
+    !user ||
+    user.role !== "patient" ||
+    !user.firstName?.trim() ||
+    !user.lastName?.trim()
+  )
+    return null
 
   function handleLogout() {
     void authClient.signOut().then(() => {

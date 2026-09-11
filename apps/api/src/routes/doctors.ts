@@ -287,8 +287,8 @@ const patchMeRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            firstName: z.string().min(1).optional(),
-            lastName: z.string().min(1).optional(),
+            firstName: z.string().trim().min(1).optional(),
+            lastName: z.string().trim().min(1).optional(),
             phoneNumber: PhoneNumberSchema.optional(),
           }),
         },

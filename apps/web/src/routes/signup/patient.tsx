@@ -25,7 +25,9 @@ export const Route = createFileRoute("/signup/patient")({
     if (!user) throw redirect({ to: "/login" })
     if (!user.role) throw redirect({ to: "/signup/select-role" })
     if (user.role !== "patient") throw redirect({ to: "/" })
-    if (user.firstName) throw redirect({ to: "/patient/dashboard" })
+    if (user.firstName?.trim() && user.lastName?.trim()) {
+      throw redirect({ to: "/patient/dashboard" })
+    }
   },
   component: PatientProfilePage,
 })

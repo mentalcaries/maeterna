@@ -34,8 +34,8 @@ const completeProfileRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            firstName: z.string().min(1),
-            lastName: z.string().min(1),
+            firstName: z.string().trim().min(1),
+            lastName: z.string().trim().min(1),
             dateOfBirth: z.string().optional(),
             registrationNumber: RegistrationNumberSchema.optional(),
             phoneNumber: PhoneNumberSchema.optional(),
