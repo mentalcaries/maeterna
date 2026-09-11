@@ -36,6 +36,11 @@ patient edit or delete controls. These mutations use the generated PATCH and
 DELETE methods for `/patients/me/readings/{readingId}` and invalidate the shared
 `["readings"]` query prefix.
 
+The patient dashboard includes a compact, seven-day trend card. It summarizes
+glucose as fasting and daily after-meal-average lines, and blood pressure as
+daily systolic and diastolic averages. Tooltips retain individual readings;
+server-computed severity drives the in-range count and glucose high-day marker.
+
 ## Running locally
 
 Requires `apps/api` running (or a deployed API URL). Env vars go in `.env.local`:

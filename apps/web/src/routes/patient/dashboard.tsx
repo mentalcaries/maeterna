@@ -8,6 +8,7 @@ import { useSession } from "@/lib/session"
 import { getAppUser } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
 import { ReadingList } from "@/components/readings/ReadingList"
+import { PatientTrendsCard } from "@/components/charts/PatientTrendsCard"
 import { adaptReading } from "@/lib/readings"
 import { computeGestationalAge, formatGestationalAge } from "@/lib/due-date"
 
@@ -99,9 +100,11 @@ function PatientDashboardPage() {
       <Link to="/patient/log">
         <Button size="lg" className="w-full gap-2">
           <RiAddLine className="size-4" />
-          Log a reading
+          Log readings
         </Button>
       </Link>
+
+      <PatientTrendsCard enabled={!!user} glucoseUnit={glucoseUnit} />
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
