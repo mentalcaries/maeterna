@@ -22,12 +22,18 @@ export const Route = createFileRoute("/signup/select-role")({
 
     if (user.role === "patient") {
       throw redirect({
-        to: user.firstName ? "/patient/dashboard" : "/signup/patient",
+        to:
+          user.firstName?.trim() && user.lastName?.trim()
+            ? "/patient/dashboard"
+            : "/signup/patient",
       })
     }
     if (user.role === "doctor") {
       throw redirect({
-        to: user.firstName ? "/doctor/dashboard" : "/signup/doctor",
+        to:
+          user.firstName?.trim() && user.lastName?.trim()
+            ? "/doctor/dashboard"
+            : "/signup/doctor",
       })
     }
     if (user.role === "admin") throw redirect({ to: "/admin/dashboard" })

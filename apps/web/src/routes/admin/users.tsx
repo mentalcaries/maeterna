@@ -153,7 +153,8 @@ function AdminUsersPage() {
   }
 
   function userName(u: UserRow) {
-    return `${u.firstName} ${u.lastName}`
+    const name = `${u.firstName} ${u.lastName}`.trim()
+    return name || "Profile incomplete"
   }
 
   return (

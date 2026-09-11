@@ -31,8 +31,8 @@ const patchMeRoute = createRoute({
       content: {
         "application/json": {
           schema: z.object({
-            firstName: z.string().optional(),
-            lastName: z.string().optional(),
+            firstName: z.string().trim().min(1).optional(),
+            lastName: z.string().trim().min(1).optional(),
             dateOfBirth: z.string().optional(),
           }),
         },
@@ -91,14 +91,13 @@ export function registerPatientRoutes(app: AppRouter) {
     const db = createDb(c.env.DB)
     const now = new Date()
 
+    const firstName = body.firstName ?? u.firstName
+    const lastName = body.lastName ?? u.lastName
     const userUpdates: Record<string, unknown> = { updatedAt: now }
-    if (body.firstName !== undefined) {
-      userUpdates.firstName = body.firstName
-      userUpdates.name = `${body.firstName} ${u.lastName ?? ""}`
-    }
-    if (body.lastName !== undefined) {
-      userUpdates.lastName = body.lastName
-      userUpdates.name = `${u.firstName ?? ""} ${body.lastName}`
+    if (body.firstName !== undefined || body.lastName !== undefined) {
+      userUpdates.firstName = firstName
+      userUpdates.lastName = lastName
+      userUpdates.name = `${firstName ?? ""} ${lastName ?? ""}`.trim()
     }
     await db.update(userTable).set(userUpdates).where(eq(userTable.id, u.id))
 
