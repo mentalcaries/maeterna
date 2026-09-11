@@ -10,6 +10,14 @@ export const ContextSchema = z.enum([
   "morning",
   "evening",
 ])
+export const ReadingSlotSchema = z.enum([
+  "fasted",
+  "post_breakfast",
+  "post_lunch",
+  "post_dinner",
+  "morning",
+  "evening",
+])
 export const GrantTypeSchema = z.enum(["individual", "department"])
 export const InstitutionTypeSchema = z.enum([
   "hospital",
@@ -117,6 +125,8 @@ export const ReadingSchema = z
     unit: z.string(),
     context: ContextSchema,
     notes: z.string().nullable(),
+    readingDate: z.string().nullable(),
+    slot: ReadingSlotSchema.nullable(),
     timestamp: z.string().datetime(),
     severity: SeveritySchema,
     createdAt: z.string().datetime(),

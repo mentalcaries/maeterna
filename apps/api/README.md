@@ -5,7 +5,7 @@ REST API for Maeterna, built on [Hono](https://hono.dev/) and deployed to Cloudf
 ## Domain model
 
 - **Roles**: `patient`, `doctor`, `admin` — attached to the user record, drives authorization
-- **Readings**: `glucose` or `blood_pressure`, with a type-specific context and a `severity` (`normal` / `high`) computed on read against current thresholds. Patients can correct or delete readings they entered themselves; doctor-entered readings remain read-only to patients.
+- **Readings**: `glucose` or `blood_pressure`, with a type-specific context and a `severity` (`normal` / `high`) computed on read against current thresholds. Daily worksheet readings also carry a calendar date and slot. Patients can correct or delete readings they entered themselves; doctor-entered readings remain read-only to patients.
 - **Thresholds**: platform defaults, overridable per-patient by a doctor
 - **Access grants**: patients grant an individual doctor or a whole department read access; revocable; doctor reads are logged to `access_log`
 - **Doctor affiliations**: a doctor has zero or more affiliations, each either a seeded public institution (optionally with a department) or a free-text private-practice name
@@ -61,6 +61,27 @@ pnpm run db:studio    # browse the remote D1 database
 ```
 
 `db:generate` is safe to run anytime after a schema change. `db:migrate` is not — it mutates the shared remote database, so treat it like a production deploy.
+
+### Daily reading backfill
+
+After migration `0013_cheerful_jean_grey.sql` has been applied, review legacy
+daily-slot assignments without writing changes:
+
+```bash
+pnpm backfill:daily-readings
+```
+
+The script maps only patient-entered records with empty `reading_date` and
+`slot` fields. It derives Trinidad and Tobago dates, maps fasted and blood
+pressure contexts directly, maps unambiguous post-meal timestamps, and maps a
+three-reading post-meal batch in creation order. Ambiguous and conflicting
+records are left unchanged. After reviewing the report, write assignments with:
+
+```bash
+pnpm backfill:daily-readings -- --write
+```
+
+Use `-- --local` (and optionally `-- --local --write`) to run against local D1.
 
 ## Deploying
 

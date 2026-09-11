@@ -241,6 +241,17 @@ components:
           type: string
           nullable: true
           example: Taken after a short walk
+        readingDate:
+          type: string
+          nullable: true
+          pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+          description: Calendar day for a daily worksheet reading
+        slot:
+          type: string
+          nullable: true
+          enum:
+            [fasted, post_breakfast, post_lunch, post_dinner, morning, evening]
+          description: Daily worksheet slot; authoritative when present
         timestamp:
           type: string
           format: date-time
@@ -704,6 +715,20 @@ paths:
                 notes:
                   type: string
                   nullable: true
+                readingDate:
+                  type: string
+                  pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+                slot:
+                  type: string
+                  enum:
+                    [
+                      fasted,
+                      post_breakfast,
+                      post_lunch,
+                      post_dinner,
+                      morning,
+                      evening,
+                    ]
                 timestamp:
                   type: string
                   format: date-time
@@ -757,6 +782,12 @@ paths:
                     context:
                       type: string
                       enum: [fasted, post_meal]
+                    readingDate:
+                      type: string
+                      pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+                    slot:
+                      type: string
+                      enum: [fasted, post_breakfast, post_lunch, post_dinner]
                     timestamp:
                       type: string
                       format: date-time
@@ -776,6 +807,12 @@ paths:
                       type: string
                       enum: [mmHg]
                     context:
+                      type: string
+                      enum: [morning, evening]
+                    readingDate:
+                      type: string
+                      pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+                    slot:
                       type: string
                       enum: [morning, evening]
                     timestamp:
