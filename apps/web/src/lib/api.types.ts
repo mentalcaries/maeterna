@@ -685,6 +685,13 @@ export interface paths {
                 /** @enum {string} */
                 context: "fasted" | "post_meal"
                 notes?: string | null
+                readingDate?: string
+                /** @enum {string} */
+                slot?:
+                  | "fasted"
+                  | "post_breakfast"
+                  | "post_lunch"
+                  | "post_dinner"
                 /** Format: date-time */
                 timestamp: string
               }
@@ -698,6 +705,9 @@ export interface paths {
                 /** @enum {string} */
                 context: "morning" | "evening"
                 notes?: string | null
+                readingDate?: string
+                /** @enum {string} */
+                slot?: "morning" | "evening"
                 /** Format: date-time */
                 timestamp: string
               }
@@ -847,6 +857,13 @@ export interface paths {
                 unit: "mg/dL" | "mmol/L"
                 /** @enum {string} */
                 context: "fasted" | "post_meal"
+                readingDate?: string
+                /** @enum {string} */
+                slot?:
+                  | "fasted"
+                  | "post_breakfast"
+                  | "post_lunch"
+                  | "post_dinner"
                 /** Format: date-time */
                 timestamp: string
               }
@@ -859,6 +876,9 @@ export interface paths {
                 unit: "mmHg"
                 /** @enum {string} */
                 context: "morning" | "evening"
+                readingDate?: string
+                /** @enum {string} */
+                slot?: "morning" | "evening"
                 /** Format: date-time */
                 timestamp: string
               }
@@ -945,6 +965,13 @@ export interface paths {
                 /** @enum {string} */
                 context: "fasted" | "post_meal"
                 notes?: string | null
+                readingDate?: string
+                /** @enum {string} */
+                slot?:
+                  | "fasted"
+                  | "post_breakfast"
+                  | "post_lunch"
+                  | "post_dinner"
                 /** Format: date-time */
                 timestamp: string
               }
@@ -958,6 +985,9 @@ export interface paths {
                 /** @enum {string} */
                 context: "morning" | "evening"
                 notes?: string | null
+                readingDate?: string
+                /** @enum {string} */
+                slot?: "morning" | "evening"
                 /** Format: date-time */
                 timestamp: string
               }
@@ -2890,6 +2920,16 @@ export interface components {
       /** @enum {string} */
       context: "fasted" | "post_meal" | "morning" | "evening"
       notes: string | null
+      readingDate: string | null
+      /** @enum {string|null} */
+      slot:
+        | "fasted"
+        | "post_breakfast"
+        | "post_lunch"
+        | "post_dinner"
+        | "morning"
+        | "evening"
+        | null
       /** Format: date-time */
       timestamp: string
       /** @enum {string} */
